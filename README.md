@@ -31,13 +31,7 @@ This project is built incrementally. Checklist:
 - [x] `pi` child process management
 - [x] HTTP + WebSocket bridge server
 - [x] Mobile-friendly PWA client
-- [ ] systemd unit + Tailscale deployment instructions
-
-## Building
-
-```bash
-cargo build --release
-```
+- [x] systemd unit + Tailscale deployment instructions
 
 ## Configuration and usage
 
@@ -54,8 +48,8 @@ output: `PIPER_PROJECT_DIR`, `PIPER_TOKEN`, `PIPER_BIND`, `PIPER_SESSION`,
 `PIPER_NO_SESSION`, `PIPER_PI_COMMAND`.
 
 Piper binds to `127.0.0.1` by default. Point `tailscale serve` at that
-port to expose it to your tailnet with a valid HTTPS certificate (see the
-deployment docs, added in a later commit).
+port to expose it to your tailnet with a valid HTTPS certificate (see
+[Deployment](#deployment) below).
 
 Once running, a client opens `wss://<host>/ws?token=<token>` and speaks
 pi's RPC protocol directly (see pi's `docs/rpc.md` for the full command
@@ -95,6 +89,93 @@ the agent is already streaming — the button relabels itself accordingly.
 from pi extensions) are not yet rendered by this client. If a project's
 extensions rely on those without a timeout, they will stall waiting for a
 response this client never sends. Piper's own defaults don't use them.
+
+## Deployment
+
+This deploys Piper as a systemd service on the machine that already runs
+`pi` (a desktop, home server, NAS, etc.), reachable from your phone only
+over Tailscale.
+
+### 1. Build and install the binary
+
+```bash
+cargo build --release
+sudo install -m 755 target/release/piper /usr/local/bin/piper
+```
+
+### 2. Configure
+
+```bash
+sudo install -d /etc/piper
+sudo install -m 600 deploy/piper.env.example /etc/piper/piper.env
+sudo $EDITOR /etc/piper/piper.env   # set PIPER_PROJECT_DIR and PIPER_TOKEN
+```
+
+### 3. Install the systemd unit
+
+```bash
+sudo cp deploy/piper.service /etc/systemd/system/piper.service
+sudo $EDITOR /etc/systemd/system/piper.service   # set User=
+sudo systemctl daemon-reload
+sudo systemctl enable --now piper
+sudo systemctl status piper
+```
+
+`Restart=on-failure` means systemd restarts Piper (and thus respawns
+`pi`) if the `pi` child process ever crashes — see the crash-handling note
+above for why that logic lives in systemd rather than in Piper itself.
+
+### 4. Expose it on your tailnet with `tailscale serve`
+
+Install [Tailscale](https://tailscale.com/download) on this machine and
+sign in (`tailscale up`), then:
+
+```bash
+tailscale serve --bg 4390
+```
+
+This proxies your tailnet's HTTPS address (with a certificate Tailscale
+manages automatically) to Piper's loopback port. It persists across
+reboots as part of `tailscaled`'s own state — no separate service to
+manage. Useful commands:
+
+```bash
+tailscale serve status   # see the current mapping
+tailscale serve reset    # remove it
+```
+
+Exact flags can shift between Tailscale versions; run `tailscale serve
+--help` if the above doesn't match your installed version. Do **not** use
+`tailscale funnel`, which exposes the service to the public internet
+instead of just your tailnet.
+
+### 5. Connect from your phone
+
+1. Install the Tailscale app on your phone and sign in to the same
+   tailnet.
+2. Find this machine's tailnet hostname: `tailscale status` (looks like
+   `your-machine.your-tailnet.ts.net`).
+3. Open `https://your-machine.your-tailnet.ts.net/?token=<PIPER_TOKEN>`
+   in your phone's browser once, to store the token.
+4. "Add to Home Screen" to install it as a standalone app icon.
+
+Nothing here is reachable from the public internet — only devices signed
+into your tailnet can resolve or reach that hostname at all.
+
+## Development
+
+```bash
+cargo fmt
+cargo check --all-targets
+cargo clippy --all-targets -- -D warnings
+cargo test
+```
+
+The integration test in `tests/websocket_bridge.rs` spawns a real `pi
+--mode rpc` process and drives it over a real WebSocket using
+`get_state`, which never calls the configured LLM, so it runs without
+network access or API costs (beyond whatever `pi` itself needs to start
+up).
 
 ## License
 

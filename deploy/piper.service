@@ -1,0 +1,32 @@
+[Unit]
+Description=Piper - remote control bridge for a pi coding-agent session
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Run as the user that owns the target project and has an authenticated
+# `pi` (credentials live under that user's ~/.pi/agent/auth.json).
+User=YOUR_USER
+
+# See deploy/piper.env.example. Keep this file's permissions restrictive
+# (chmod 600) since it holds the access token.
+EnvironmentFile=/etc/piper/piper.env
+
+ExecStart=/usr/local/bin/piper
+
+# The `pi` process management module treats a crashed/exited child as
+# fatal for Piper itself (see src/rpc/process.rs); systemd is what
+# actually restarts the service afterwards.
+Restart=on-failure
+RestartSec=2
+
+# Light sandboxing. Not full ProtectSystem=strict confinement, since `pi`
+# needs ordinary read/write access to the target project directory and to
+# its own config under the service user's home directory.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
