@@ -27,8 +27,8 @@ tailnet only. Nothing is exposed to the public internet.
 
 This project is built incrementally. Checklist:
 
-- [ ] JSONL line-protocol relay primitives
-- [ ] `pi` child process management (spawn, restart, backoff)
+- [x] JSONL line-protocol relay primitives
+- [x] `pi` child process management
 - [ ] HTTP + WebSocket bridge server
 - [ ] Mobile-friendly PWA client
 - [ ] systemd unit + Tailscale deployment instructions
@@ -41,7 +41,19 @@ cargo build --release
 
 ## Configuration and usage
 
-Documented once the server is implemented (see checklist above).
+Full usage lands with the WebSocket server (see checklist above). For now,
+`piper` is a manual smoke test for the `pi` process bridge: it spawns
+`pi --mode rpc` in `--project-dir`, sends one prompt, prints the streamed
+reply, and exits.
+
+```bash
+cargo run -- --project-dir /path/to/project --no-session "List the files here"
+```
+
+Crash handling note: Piper does not implement its own restart/backoff for
+a crashed `pi` process. If `pi` exits, Piper exits too, and the systemd
+unit (added later) restarts Piper via `Restart=on-failure`. This avoids
+reimplementing a process supervisor that the OS already provides.
 
 ## License
 
