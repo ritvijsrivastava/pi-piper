@@ -30,7 +30,7 @@ This project is built incrementally. Checklist:
 - [x] JSONL line-protocol relay primitives
 - [x] `pi` child process management
 - [x] HTTP + WebSocket bridge server
-- [ ] Mobile-friendly PWA client
+- [x] Mobile-friendly PWA client
 - [ ] systemd unit + Tailscale deployment instructions
 
 ## Building
@@ -74,6 +74,27 @@ avoids reimplementing a process supervisor the OS already provides.
 **Auth note:** the `?token=` check is defense-in-depth, not the primary
 security boundary — Piper is designed to be reachable only over a
 private Tailscale network in the first place.
+
+### Mobile client
+
+Open `https://<host>/` (or `http://` while testing over loopback) in a
+phone browser. On first load it asks for the access token and stores it
+in `localStorage`; you can also open a link like
+`https://<host>/?token=<token>` to set it automatically, which is handy
+for a one-time bookmark/home-screen setup. "Add to Home Screen" installs
+it as a standalone PWA using `manifest.json` and `sw.js` (the service
+worker only caches the static app shell — chat data always goes over the
+live WebSocket, there is no offline chat mode).
+
+The composer has two buttons: **Send** submits a prompt when idle, or a
+*steering* message (delivered after the current tool calls finish) while
+the agent is already streaming — the button relabels itself accordingly.
+**Abort** appears only while streaming and cancels the current run.
+
+**Known limitation:** extension UI dialogs (`ctx.ui.select/confirm/input`
+from pi extensions) are not yet rendered by this client. If a project's
+extensions rely on those without a timeout, they will stall waiting for a
+response this client never sends. Piper's own defaults don't use them.
 
 ## License
 

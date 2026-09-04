@@ -1,0 +1,218 @@
+/* Minimal, mobile-first, dark theme. No framework/build step by design. */
+
+:root {
+  color-scheme: dark;
+  --bg: #111827;
+  --bg-raised: #1f2937;
+  --border: #374151;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #34d399;
+  --danger: #f87171;
+  --user-bubble: #2563eb;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+#status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: calc(0.6rem + var(--safe-top)) 0.75rem 0.6rem;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+}
+
+#status-text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-connected {
+  background: var(--accent);
+}
+
+.dot-disconnected {
+  background: var(--danger);
+}
+
+.dot-connecting {
+  background: #fbbf24;
+}
+
+#settings-toggle {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 1.1rem;
+  padding: 0.25rem 0.4rem;
+}
+
+#settings {
+  padding: 0.75rem;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#settings label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+#settings input {
+  padding: 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+#settings .hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+button {
+  cursor: pointer;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-size: 0.95rem;
+  padding: 0.6rem 1rem;
+}
+
+button:active {
+  filter: brightness(1.15);
+}
+
+#send-button {
+  background: var(--accent);
+  color: #052e1f;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+#abort-button {
+  background: var(--danger);
+  color: #450a0a;
+  border-color: var(--danger);
+  font-weight: 600;
+}
+
+#transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.bubble {
+  max-width: 85%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.9rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.bubble-user {
+  align-self: flex-end;
+  background: var(--user-bubble);
+  color: #eff6ff;
+  border-bottom-right-radius: 0.2rem;
+}
+
+.bubble-assistant {
+  align-self: flex-start;
+  background: var(--bg-raised);
+  border-bottom-left-radius: 0.2rem;
+}
+
+.bubble-thinking {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.bubble-tool {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.bubble-system {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  background: none;
+}
+
+#composer {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  padding: 0.6rem 0.75rem calc(0.6rem + var(--safe-bottom));
+  background: var(--bg-raised);
+  border-top: 1px solid var(--border);
+}
+
+#message-input {
+  flex: 1;
+  resize: none;
+  max-height: 8rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+#composer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
