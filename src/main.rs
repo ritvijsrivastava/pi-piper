@@ -3,24 +3,18 @@
 //! browser) over a private Tailscale network.
 //!
 //! See `README.md` for the architecture overview and setup instructions.
-//!
-//! This binary is currently a manual smoke test for the `pi` process
-//! management layer: it spawns `pi --mode rpc`, sends one prompt taken
-//! from the command line, prints the streamed reply, and exits. The
-//! WebSocket server that replaces this entry point lands in a later
-//! commit.
 
-mod config;
-mod rpc;
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
-use serde_json::{json, Value};
-use tokio::sync::broadcast::error::RecvError;
+use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
-use config::Config;
-use rpc::process::PiProcess;
+use piper::config::Config;
+use piper::rpc::process::PiProcess;
+use piper::server;
+use piper::state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -29,73 +23,29 @@ async fn main() -> Result<()> {
         .init();
 
     let config = Config::parse();
-    let mut process = PiProcess::spawn(&config)?;
+    let pi = Arc::new(PiProcess::spawn(&config)?);
+    let state = AppState::new(pi.clone(), config.token.clone());
 
-    // Subscribe immediately after spawning to minimize the window in
-    // which early events could be missed before anyone is listening.
-    let mut events = process.subscribe();
+    let listener = TcpListener::bind(config.bind).await?;
+    tracing::info!(addr = %config.bind, "piper listening");
 
-    process
-        .send(&json!({"type": "prompt", "message": config.message}))
-        .await?;
+    let app = server::router(state);
 
-    loop {
-        tokio::select! {
-            event = events.recv() => {
-                match event {
-                    Ok(event) => {
-                        if print_text_delta(&event) {
-                            continue;
-                        }
-                        if is_agent_settled(&event) {
-                            println!();
-                            break;
-                        }
-                    }
-                    Err(RecvError::Lagged(skipped)) => {
-                        tracing::warn!(skipped, "event receiver lagged, some events were dropped");
-                    }
-                    Err(RecvError::Closed) => {
-                        tracing::warn!("pi process ended before settling");
-                        break;
-                    }
-                }
-            }
-            status = process.wait() => {
-                tracing::warn!(?status, "pi process exited unexpectedly");
-                break;
-            }
+    // Run the server until it errors, the operator hits Ctrl+C, or the
+    // underlying `pi` process exits unexpectedly (see rpc::process for why
+    // a crash is treated as fatal here rather than restarted in-process).
+    tokio::select! {
+        result = axum::serve(listener, app) => {
+            result?;
+        }
+        _ = tokio::signal::ctrl_c() => {
+            tracing::info!("received ctrl-c, shutting down");
+        }
+        status = pi.wait() => {
+            tracing::error!(?status, "pi process exited unexpectedly, shutting down");
         }
     }
 
-    process.shutdown().await?;
+    pi.shutdown().await?;
     Ok(())
-}
-
-/// Prints a streamed assistant text chunk, if `event` is one, and reports
-/// whether it handled the event.
-fn print_text_delta(event: &Value) -> bool {
-    let delta = event
-        .get("assistantMessageEvent")
-        .filter(|_| event.get("type").and_then(Value::as_str) == Some("message_update"))
-        .filter(|e| e.get("type").and_then(Value::as_str) == Some("text_delta"))
-        .and_then(|e| e.get("delta"))
-        .and_then(Value::as_str);
-
-    match delta {
-        Some(text) => {
-            print!("{text}");
-            use std::io::Write;
-            let _ = std::io::stdout().flush();
-            true
-        }
-        None => false,
-    }
-}
-
-/// Returns true once the agent has fully settled (no more automatic
-/// retries, compaction, or queued continuations), which is the signal
-/// that this one-shot prompt is done.
-fn is_agent_settled(event: &Value) -> bool {
-    event.get("type").and_then(Value::as_str) == Some("agent_settled")
 }

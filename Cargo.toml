@@ -12,6 +12,7 @@ tokio = { version = "1.53", features = [
     "macros",
     "process",
     "io-util",
+    "net",
     "sync",
     "fs",
     "time",
@@ -42,6 +43,11 @@ clap = { version = "4", features = ["derive", "env"] }
 # Error handling.
 anyhow = "1"
 thiserror = "2"
+
+[dev-dependencies]
+# Only used by integration tests to act as a WebSocket client against the
+# real server.
+tokio-tungstenite = "0.29"
 
 [profile.release]
 # Single long-running binary: prefer smaller, slightly slower code over

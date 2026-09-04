@@ -32,9 +32,11 @@ const EVENT_CHANNEL_CAPACITY: usize = 1024;
 ///
 /// Commands are written to the child's stdin via [`PiProcess::send`].
 /// Events read from the child's stdout are fanned out to any number of
-/// subscribers via [`PiProcess::subscribe`].
+/// subscribers via [`PiProcess::subscribe`]. All methods take `&self`
+/// (state is behind `Mutex`) so a single `PiProcess` can be wrapped in an
+/// `Arc` and shared across every WebSocket connection handler.
 pub struct PiProcess {
-    child: Child,
+    child: Mutex<Child>,
     stdin: Mutex<ChildStdin>,
     events_tx: broadcast::Sender<Value>,
 }
@@ -91,7 +93,7 @@ impl PiProcess {
         });
 
         Ok(Self {
-            child,
+            child: Mutex::new(child),
             stdin: Mutex::new(stdin),
             events_tx,
         })
@@ -112,18 +114,25 @@ impl PiProcess {
     /// Waits for the child process to exit. Callers should treat any
     /// return from this (success or failure) as fatal for the current
     /// Piper process; see the module-level docs for why restarts are left
-    /// to systemd.
-    pub async fn wait(&mut self) -> Result<std::process::ExitStatus> {
-        self.child.wait().await.context("waiting for pi process")
+    /// to systemd. Safe to call from multiple tasks: once the child has
+    /// exited, every caller observes the same cached exit status.
+    pub async fn wait(&self) -> Result<std::process::ExitStatus> {
+        self.child
+            .lock()
+            .await
+            .wait()
+            .await
+            .context("waiting for pi process")
     }
 
     /// Best-effort shutdown: closes stdin (so pi sees EOF and can exit
     /// cleanly) and asks the OS to terminate the process if it doesn't.
-    pub async fn shutdown(&mut self) -> Result<()> {
-        if let Ok(mut stdin) = self.stdin.try_lock() {
+    pub async fn shutdown(&self) -> Result<()> {
+        {
+            let mut stdin = self.stdin.lock().await;
             let _ = stdin.shutdown().await;
         }
-        let _ = self.child.start_kill();
+        let _ = self.child.lock().await.start_kill();
         Ok(())
     }
 }

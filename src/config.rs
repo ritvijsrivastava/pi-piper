@@ -4,6 +4,7 @@
 //! `env = "..."` attributes below), which is what the systemd deployment
 //! uses so secrets like the auth token never appear in `ps` output.
 
+use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -37,11 +38,19 @@ pub struct Config {
     #[arg(long = "pi-arg")]
     pub extra_pi_args: Vec<String>,
 
-    /// One-shot prompt to send for manual testing from the command line.
-    /// The real WebSocket bridge (added in a later commit) does not use
-    /// this; it exists so process management can be verified end-to-end
-    /// without a browser client.
-    pub message: String,
+    /// Address to bind the HTTP/WebSocket server to. Defaults to loopback
+    /// only: expose it to your phone via `tailscale serve`, which proxies
+    /// from the tailnet (with a valid HTTPS certificate) to this local
+    /// address, rather than binding Piper itself to a non-loopback address.
+    #[arg(long, env = "PIPER_BIND", default_value = "127.0.0.1:4390")]
+    pub bind: SocketAddr,
+
+    /// Shared secret clients must present as `?token=` to open a
+    /// WebSocket connection. This is defense-in-depth on top of
+    /// Tailscale's network-level access control, not the primary security
+    /// boundary.
+    #[arg(long, env = "PIPER_TOKEN")]
+    pub token: String,
 }
 
 impl Config {

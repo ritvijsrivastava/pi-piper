@@ -29,7 +29,7 @@ This project is built incrementally. Checklist:
 
 - [x] JSONL line-protocol relay primitives
 - [x] `pi` child process management
-- [ ] HTTP + WebSocket bridge server
+- [x] HTTP + WebSocket bridge server
 - [ ] Mobile-friendly PWA client
 - [ ] systemd unit + Tailscale deployment instructions
 
@@ -41,19 +41,39 @@ cargo build --release
 
 ## Configuration and usage
 
-Full usage lands with the WebSocket server (see checklist above). For now,
-`piper` is a manual smoke test for the `pi` process bridge: it spawns
-`pi --mode rpc` in `--project-dir`, sends one prompt, prints the streamed
-reply, and exits.
-
 ```bash
-cargo run -- --project-dir /path/to/project --no-session "List the files here"
+cargo run -- \
+  --project-dir /path/to/project \
+  --token "$(openssl rand -hex 32)" \
+  --bind 127.0.0.1:4390
 ```
 
-Crash handling note: Piper does not implement its own restart/backoff for
-a crashed `pi` process. If `pi` exits, Piper exits too, and the systemd
-unit (added later) restarts Piper via `Restart=on-failure`. This avoids
-reimplementing a process supervisor that the OS already provides.
+All flags also accept an environment variable (see `--help`), which is
+what the systemd deployment uses so the token never appears in `ps`
+output: `PIPER_PROJECT_DIR`, `PIPER_TOKEN`, `PIPER_BIND`, `PIPER_SESSION`,
+`PIPER_NO_SESSION`, `PIPER_PI_COMMAND`.
+
+Piper binds to `127.0.0.1` by default. Point `tailscale serve` at that
+port to expose it to your tailnet with a valid HTTPS certificate (see the
+deployment docs, added in a later commit).
+
+Once running, a client opens `wss://<host>/ws?token=<token>` and speaks
+pi's RPC protocol directly (see pi's `docs/rpc.md` for the full command
+and event reference) — Piper does not wrap or translate it.
+
+**Protocol design note:** Piper deliberately relays the RPC JSON verbatim
+in both directions instead of defining its own browser-facing protocol.
+This means the browser client and pi's RPC docs are the only protocol
+reference needed; Piper has nothing of its own to keep in sync.
+
+**Crash handling note:** Piper does not implement its own restart/backoff
+for a crashed `pi` process. If `pi` exits, Piper exits too, and the
+systemd unit (added later) restarts Piper via `Restart=on-failure`. This
+avoids reimplementing a process supervisor the OS already provides.
+
+**Auth note:** the `?token=` check is defense-in-depth, not the primary
+security boundary — Piper is designed to be reachable only over a
+private Tailscale network in the first place.
 
 ## License
 
