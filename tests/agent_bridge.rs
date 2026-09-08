@@ -172,6 +172,70 @@ async fn command_from_phone_is_relayed_to_agent_and_response_back_to_phone() {
 }
 
 #[tokio::test]
+async fn duplicate_registration_closes_the_previous_connection() {
+    let addr = spawn_hub().await;
+
+    let (mut first, _) = connect_async(format!("ws://{addr}/agent?token={AGENT_TOKEN}"))
+        .await
+        .expect("first agent connects");
+    first
+        .send(Message::Text(
+            json!({"type": "register", "sessionId": "sess-dup", "cwd": "/tmp/a"})
+                .to_string()
+                .into(),
+        ))
+        .await
+        .unwrap();
+    let _ack = recv_json(&mut first).await;
+
+    // A second connection registers under the *same* sessionId (e.g.
+    // the same session file resumed in two terminals at once). The
+    // first connection must be told to close rather than left as a
+    // zombie — see `SessionRegistry::register`.
+    let (mut second, _) = connect_async(format!("ws://{addr}/agent?token={AGENT_TOKEN}"))
+        .await
+        .expect("second agent connects");
+    second
+        .send(Message::Text(
+            json!({"type": "register", "sessionId": "sess-dup", "cwd": "/tmp/b"})
+                .to_string()
+                .into(),
+        ))
+        .await
+        .unwrap();
+    let _ack = recv_json(&mut second).await;
+
+    let closed = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            match first.next().await {
+                Some(Ok(Message::Close(_))) | None => return true,
+                Some(Ok(_)) => continue,
+                Some(Err(_)) => return true,
+            }
+        }
+    })
+    .await
+    .expect("timed out waiting for the first connection to be closed");
+    assert!(closed, "the superseded connection should have been closed");
+
+    // The surviving registration reflects the second connection's meta.
+    let sessions: Value = reqwest::get(format!("http://{addr}/api/sessions?token={PHONE_TOKEN}"))
+        .await
+        .expect("request /api/sessions")
+        .json()
+        .await
+        .expect("valid json body");
+    let entry = sessions
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["sessionId"] == "sess-dup")
+        .expect("sess-dup present");
+    assert_eq!(entry["cwd"], "/tmp/b");
+    assert_eq!(entry["connected"], true);
+}
+
+#[tokio::test]
 async fn disconnecting_agent_removes_session_and_notifies_control_channel() {
     let addr = spawn_hub().await;
 

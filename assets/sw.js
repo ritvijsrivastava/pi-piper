@@ -2,7 +2,18 @@
 // only caches static assets; chat data always goes over a live WebSocket
 // and is never cached (there is no meaningful "offline" mode for a
 // remote-control UI).
-const CACHE_NAME = "piper-shell-v1";
+//
+// Network-first, falling back to cache: a pure cache-first strategy
+// means every future deploy is invisible to an already-installed PWA
+// forever, since the fetch handler would keep serving the stale cached
+// copy no matter how many times the page is reloaded (only an update to
+// this file's own bytes makes the browser re-check it at all, and even
+// then the old cache entries would otherwise just sit there unused but
+// never refreshed). Network-first means a deploy is picked up on the
+// very next reload, with the cache only kicking in when actually
+// offline. Bump CACHE_NAME on a breaking app-shell change if you ever
+// need to force-evict old entries immediately.
+const CACHE_NAME = "piper-shell-v2";
 const APP_SHELL = [
   "/",
   "/style.css",
@@ -37,9 +48,12 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request);
-    }),
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request)),
   );
 });

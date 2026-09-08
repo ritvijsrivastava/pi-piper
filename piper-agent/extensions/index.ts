@@ -22,6 +22,12 @@ export default function (pi: ExtensionAPI) {
   function start(ctx: ExtensionCommandContext): void {
     rememberCommandCtx(ctx);
     client?.close();
+    // Tracks the last status a notification was shown for, so a Hub
+    // outage doesn't produce a fresh toast on every 1–10s reconnect
+    // attempt: "error"/"disconnected" only notify once, right after a
+    // transition worth telling the user about, not on every retry that
+    // repeats the same outcome.
+    let lastNotified: string | undefined;
     client = new HubClient(
       {
         sessionId: ctx.sessionManager.getSessionId(),
@@ -31,9 +37,14 @@ export default function (pi: ExtensionAPI) {
       },
       handleCommand,
       (status, detail) => {
-        if (status === "error") {
+        if (status === "connected") {
+          ctx.ui.notify("piper: connected.", "info");
+        } else if (status === "error" && lastNotified !== "error") {
           ctx.ui.notify(`piper: ${detail}`, "warning");
+        } else if (status === "disconnected" && lastNotified === "connected") {
+          ctx.ui.notify("piper: disconnected from the Hub \u2013 retrying\u2026", "warning");
         }
+        lastNotified = status;
       },
     );
     client.connect();
@@ -68,7 +79,13 @@ export default function (pi: ExtensionAPI) {
         return;
       }
       if (sub === "status") {
-        ctx.ui.notify(client ? "piper: connecting/connected (see logs for detail)" : "piper: not connected", "info");
+        if (!client) {
+          ctx.ui.notify("piper: not connected", "info");
+          return;
+        }
+        const { status, detail } = client.getStatus();
+        const message = detail ? `piper: ${status} (${detail})` : `piper: ${status}`;
+        ctx.ui.notify(message, status === "error" ? "warning" : "info");
         return;
       }
       try {

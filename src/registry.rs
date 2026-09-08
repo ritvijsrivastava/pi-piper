@@ -36,7 +36,10 @@ impl SessionRegistry {
 
     /// Registers a new session and spawns its passive status watcher.
     /// If a session with this id is already registered (e.g. a
-    /// reconnect race), the old entry is replaced.
+    /// reconnect race, or the same session file resumed in two
+    /// terminals at once), the old entry is replaced and its
+    /// connection is asked to close rather than left as a zombie that
+    /// nothing will ever read from again.
     pub fn register(
         self: &Arc<Self>,
         id: String,
@@ -52,6 +55,10 @@ impl SessionRegistry {
             .insert(id.clone(), handle.clone())
         {
             old.mark_disconnected();
+            // `AgentLink::shutdown` is async; spawned since `register`
+            // itself isn't and shouldn't hold the sessions lock across
+            // an await point anyway.
+            tokio::spawn(async move { old.link.shutdown().await });
         }
 
         let _ = self.control_tx.send(json!({

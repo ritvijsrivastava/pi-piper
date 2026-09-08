@@ -14,10 +14,8 @@ export interface RegisterInfo {
 }
 
 export type CommandHandler = (command: unknown) => Promise<unknown>;
-export type StatusHandler = (
-  status: "connecting" | "connected" | "disconnected" | "error",
-  detail?: string,
-) => void;
+export type ConnectionStatus = "idle" | "connecting" | "connected" | "disconnected" | "error";
+export type StatusHandler = (status: ConnectionStatus, detail?: string) => void;
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000];
 
@@ -30,12 +28,26 @@ export class HubClient {
   private closed = false;
   private reconnectAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  private status: ConnectionStatus = "idle";
+  private statusDetail: string | undefined;
 
   constructor(
     private info: RegisterInfo,
     private onCommand: CommandHandler,
     private onStatus?: StatusHandler,
   ) {}
+
+  /** Current connection status, for `/rc status` to report accurately
+   * instead of a static string — see piper-agent's index.ts. */
+  getStatus(): { status: ConnectionStatus; detail?: string } {
+    return { status: this.status, detail: this.statusDetail };
+  }
+
+  private setStatus(status: ConnectionStatus, detail?: string): void {
+    this.status = status;
+    this.statusDetail = detail;
+    this.onStatus?.(status, detail);
+  }
 
   /** Patches display metadata (e.g. a `/name` rename) without
    * reconnecting — see SPEC.md §6.1 `meta_update`. */
@@ -65,13 +77,13 @@ export class HubClient {
 
   private open(): void {
     if (this.closed) return;
-    this.onStatus?.("connecting");
+    this.setStatus("connecting");
 
     let token: string;
     try {
       token = resolveAgentToken();
     } catch (err) {
-      this.onStatus?.("error", err instanceof Error ? err.message : String(err));
+      this.setStatus("error", err instanceof Error ? err.message : String(err));
       this.scheduleReconnect();
       return;
     }
@@ -99,19 +111,19 @@ export class HubClient {
         return;
       }
       if (frame?.type === "registered") {
-        this.onStatus?.("connected");
+        this.setStatus("connected");
       } else if (frame?.type === "command") {
         void this.handleCommand(frame.id, frame.command);
       }
     });
 
     ws.on("close", () => {
-      this.onStatus?.("disconnected");
+      this.setStatus("disconnected");
       if (!this.closed) this.scheduleReconnect();
     });
 
     ws.on("error", (err) => {
-      this.onStatus?.("error", err instanceof Error ? err.message : String(err));
+      this.setStatus("error", err instanceof Error ? err.message : String(err));
     });
   }
 
