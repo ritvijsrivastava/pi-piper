@@ -166,6 +166,7 @@
         connectControlChannel();
       } else {
         setStatus("disconnected", "Unauthorized \u2013 set a token");
+        settingsToggle.hidden = false;
         settingsPanel.hidden = false;
         render();
       }
@@ -180,6 +181,12 @@
         const response = await fetch(apiUrl(`/api/sessions?token=${encodeURIComponent(getToken())}`));
         if (response.status === 401) return false;
         if (!response.ok) return true;
+        // Authorized with no locally-stored token at all — the only way
+        // that's possible is the Tailscale identity header (SPEC.md
+        // §7.1). There is nothing to configure in that case, so hide the
+        // settings gear entirely instead of leaving an "Access token"
+        // control dangling that would suggest one is needed.
+        if (!getToken()) settingsToggle.hidden = true;
         const list = await response.json();
         sessions.clear();
         for (const session of list) sessions.set(session.sessionId, session);
@@ -339,7 +346,7 @@
       render();
     });
 
-    return { start, stopControlChannel };
+    return { start, stopControlChannel, fetchSnapshot };
   })();
 
   // ---- Chat screen (SPEC.md §9.2) -------------------------------------------
@@ -736,7 +743,12 @@
   loadTokenFromQueryString();
   tokenInput.value = getToken();
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
+    navigator.serviceWorker.register("/sw.js").then((registration) => {
+      // Proactively check for a newer sw.js on every load rather than
+      // waiting on the browser's own (much lazier) update heuristic —
+      // see sw.js for why staleness here previously hid app fixes.
+      registration.update().catch(() => {});
+    }).catch(() => {
       // Installability is a nice-to-have; ignore registration failures.
     });
   }
@@ -744,4 +756,11 @@
     window.location.hash = "#/sessions";
   }
   renderRoute();
+  // A deep link straight into the chat view (#/session/<id>) never runs
+  // Sessions.start(), which is otherwise what decides whether the
+  // settings gear should be hidden (authenticated via the Tailscale
+  // identity header, see fetchSnapshot above) — so check once here too.
+  if (currentRoute().view === "chat") {
+    Sessions.fetchSnapshot();
+  }
 })();
