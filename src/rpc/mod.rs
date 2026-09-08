@@ -10,6 +10,7 @@
 //! designed or kept in sync.
 
 pub mod process;
+pub mod remote_agent;
 
 use anyhow::{Context, Result};
 use serde_json::Value;

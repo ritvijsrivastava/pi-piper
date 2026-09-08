@@ -2,25 +2,31 @@
 
 use std::sync::Arc;
 
-use crate::rpc::process::PiProcess;
+use crate::registry::SessionRegistry;
 
 /// State shared across all HTTP and WebSocket connections.
 ///
-/// Cheap to clone: it only clones an `Arc` and a reference-counted string,
-/// never the underlying process or token.
+/// Cheap to clone: it only clones `Arc`s and reference-counted strings,
+/// never the registry contents or the tokens.
 #[derive(Clone)]
 pub struct AppState {
-    /// The single `pi` RPC process this Piper instance controls.
-    pub pi: Arc<PiProcess>,
-    /// Shared secret required to open a WebSocket connection.
-    pub auth_token: Arc<str>,
+    /// Every currently-registered session (headless-spawned or
+    /// `piper-agent`-connected). See `SPEC.md` §5.1.
+    pub registry: Arc<SessionRegistry>,
+    /// Shared secret phone clients present as `?token=` to `/ws`,
+    /// `/ws/control`, and `/api/sessions`.
+    pub phone_token: Arc<str>,
+    /// Shared secret `piper-agent` extensions present as `?token=` to
+    /// `/agent`. Never sent to the phone. See `SPEC.md` §7.
+    pub agent_token: Arc<str>,
 }
 
 impl AppState {
-    pub fn new(pi: Arc<PiProcess>, auth_token: String) -> Self {
+    pub fn new(registry: Arc<SessionRegistry>, phone_token: String, agent_token: String) -> Self {
         Self {
-            pi,
-            auth_token: Arc::from(auth_token),
+            registry,
+            phone_token: Arc::from(phone_token),
+            agent_token: Arc::from(agent_token),
         }
     }
 }

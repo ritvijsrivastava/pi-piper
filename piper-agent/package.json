@@ -1,0 +1,21 @@
+{
+  "name": "piper-agent",
+  "version": "0.1.0",
+  "description": "pi extension: connect the current interactive session to a piper Hub for remote control from your phone (adds /rc). See SPEC.md in the piper repo.",
+  "license": "MIT",
+  "keywords": ["pi-package"],
+  "pi": {
+    "extensions": ["extensions/index.ts"]
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.5.0"
+  }
+}

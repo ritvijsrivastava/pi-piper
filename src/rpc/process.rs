@@ -46,9 +46,13 @@ impl PiProcess {
     /// tasks that forward its stdout (as parsed JSON events) and stderr
     /// (as log lines) onward.
     pub fn spawn(config: &Config) -> Result<Self> {
+        let project_dir = config
+            .project_dir
+            .as_ref()
+            .context("PiProcess::spawn requires config.project_dir to be set")?;
         let mut child = Command::new(&config.pi_command)
             .args(config.pi_args())
-            .current_dir(&config.project_dir)
+            .current_dir(project_dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

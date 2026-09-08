@@ -1,8 +1,9 @@
-//! End-to-end test: spawns a real `pi --mode rpc` process, serves the
-//! real axum router over a real TCP socket, and drives it with a real
-//! WebSocket client. Uses `get_state`, which never calls the configured
-//! LLM, so this test has no external cost and needs no model credentials
-//! beyond whatever `pi` is already configured to use locally.
+//! End-to-end test: spawns a real `pi --mode rpc` process registered as
+//! a headless session, serves the real axum router over a real TCP
+//! socket, and drives it with a real WebSocket client. Uses
+//! `get_state`, which never calls the configured LLM, so this test has
+//! no external cost and needs no model credentials beyond whatever `pi`
+//! is already configured to use locally.
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -16,8 +17,10 @@ use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 
 use piper::config::Config;
+use piper::registry::SessionRegistry;
 use piper::rpc::process::PiProcess;
 use piper::server;
+use piper::session::{now_ms, AgentLink, SessionKind, SessionMeta};
 use piper::state::AppState;
 
 const TOKEN: &str = "integration-test-token";
@@ -25,21 +28,40 @@ const TOKEN: &str = "integration-test-token";
 fn test_config() -> Config {
     Config {
         pi_command: "pi".to_string(),
-        project_dir: PathBuf::from("."),
+        project_dir: Some(PathBuf::from(".")),
         session: None,
         no_session: true,
         extra_pi_args: Vec::new(),
         bind: "127.0.0.1:0".parse().unwrap(),
         token: TOKEN.to_string(),
+        agent_token: Some("unused-in-this-test".to_string()),
+        agent_token_path: None,
     }
 }
 
-/// Spawns the real server on an ephemeral port and returns its address
-/// plus the `PiProcess` handle (kept alive for the duration of the test).
+/// Spawns the real server on an ephemeral port, with one headless
+/// session registered, and returns its address plus the `PiProcess`
+/// handle (kept alive for the duration of the test).
 async fn spawn_test_server() -> (SocketAddr, Arc<PiProcess>) {
     let config = test_config();
     let pi = Arc::new(PiProcess::spawn(&config).expect("spawn pi process"));
-    let state = AppState::new(pi.clone(), config.token.clone());
+
+    let registry = Arc::new(SessionRegistry::new());
+    let meta = SessionMeta {
+        session_id: "test-session".to_string(),
+        session_file: None,
+        session_name: None,
+        cwd: config.project_dir.clone().unwrap().display().to_string(),
+        connected_at_ms: now_ms(),
+        kind: SessionKind::Headless,
+    };
+    registry.register(
+        "test-session".to_string(),
+        AgentLink::Headless(pi.clone()),
+        meta,
+    );
+
+    let state = AppState::new(registry, config.token.clone(), "unused".to_string());
 
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
@@ -80,6 +102,8 @@ async fn rejects_connection_without_valid_token() {
 async fn relays_get_state_round_trip() {
     let (addr, pi) = spawn_test_server().await;
 
+    // No `?session=` needed: exactly one session is registered, so `/ws`
+    // defaults to it (see `SPEC.md` §6.4).
     let (mut socket, _response) = connect_async(format!("ws://{addr}/ws?token={TOKEN}"))
         .await
         .expect("authorized connection must succeed");
@@ -116,4 +140,44 @@ async fn relays_get_state_round_trip() {
     assert_eq!(value["success"], true);
 
     pi.shutdown().await.ok();
+}
+
+#[tokio::test]
+async fn rejects_ws_when_session_id_required_but_missing() {
+    // Two sessions registered -> `/ws` without `?session=` must be
+    // rejected rather than guessing.
+    let config = test_config();
+    let pi_a = Arc::new(PiProcess::spawn(&config).expect("spawn pi process a"));
+    let pi_b = Arc::new(PiProcess::spawn(&config).expect("spawn pi process b"));
+
+    let registry = Arc::new(SessionRegistry::new());
+    for (id, pi) in [("session-a", pi_a.clone()), ("session-b", pi_b.clone())] {
+        let meta = SessionMeta {
+            session_id: id.to_string(),
+            session_file: None,
+            session_name: None,
+            cwd: ".".to_string(),
+            connected_at_ms: now_ms(),
+            kind: SessionKind::Headless,
+        };
+        registry.register(id.to_string(), AgentLink::Headless(pi), meta);
+    }
+
+    let state = AppState::new(registry, TOKEN.to_string(), "unused".to_string());
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let app = server::router(state);
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.expect("server error");
+    });
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let result = connect_async(format!("ws://{addr}/ws?token={TOKEN}")).await;
+    assert!(
+        result.is_err(),
+        "must reject an ambiguous /ws request when multiple sessions are registered"
+    );
+
+    pi_a.shutdown().await.ok();
+    pi_b.shutdown().await.ok();
 }

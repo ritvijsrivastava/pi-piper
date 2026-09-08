@@ -1,3 +1,6 @@
 /target
 *.log
 .env
+
+# piper-agent (Node/TypeScript pi extension)
+piper-agent/node_modules

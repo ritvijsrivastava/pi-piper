@@ -12,6 +12,7 @@
   </head>
   <body>
     <header id="status-bar">
+      <button id="back-button" type="button" aria-label="Back to sessions" hidden>&#8592;</button>
       <span id="status-dot" class="dot dot-disconnected"></span>
       <span id="status-text">Connecting&hellip;</span>
       <button id="settings-toggle" type="button" aria-label="Settings">&#9881;</button>
@@ -22,26 +23,48 @@
       <input id="token-input" type="password" autocomplete="off" placeholder="Shared token" />
       <button id="settings-save" type="button">Save &amp; connect</button>
       <p class="hint">
-        The token is the shared secret configured on the Piper server
+        The token is the shared secret configured on the Piper Hub
         (<code>--token</code> / <code>PIPER_TOKEN</code>). It is stored only
-        in this browser's local storage.
+        in this browser's local storage. This is the phone token — never
+        the separate agent token used by <code>piper-agent</code>.
       </p>
     </section>
 
-    <main id="transcript" aria-live="polite"></main>
-
-    <footer id="composer">
-      <textarea
-        id="message-input"
-        rows="1"
-        placeholder="Message pi&hellip;"
-        aria-label="Message"
-      ></textarea>
-      <div id="composer-actions">
-        <button id="abort-button" type="button" hidden>Abort</button>
-        <button id="send-button" type="button">Send</button>
+    <!-- Session list ("home") screen: one entry per registered session,
+         Claude-style. See SPEC.md §9.1. -->
+    <main id="session-list-view">
+      <div id="session-search-bar">
+        <input id="session-search" type="search" placeholder="Search sessions" aria-label="Search sessions" />
       </div>
-    </footer>
+      <div id="session-list"></div>
+      <p id="session-list-empty" class="hint" hidden>
+        No sessions connected. Run <code>/rc</code> in a pi terminal to see it
+        here.
+      </p>
+    </main>
+
+    <!-- Chat screen: one running session's transcript + composer. See
+         SPEC.md §9.2. Hidden until a session is selected. -->
+    <main id="chat-view" hidden>
+      <div id="transcript" aria-live="polite"></div>
+
+      <div id="autocomplete-popover" hidden></div>
+
+      <footer id="composer">
+        <textarea
+          id="message-input"
+          rows="1"
+          placeholder="Message pi&hellip; (/ for commands)"
+          aria-label="Message"
+        ></textarea>
+        <div id="composer-actions">
+          <button id="abort-button" type="button" hidden>Abort</button>
+          <button id="send-button" type="button">Send</button>
+        </div>
+      </footer>
+    </main>
+
+    <div id="toast-container" aria-live="polite"></div>
 
     <script src="/app.js"></script>
   </body>

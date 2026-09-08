@@ -5,7 +5,10 @@
 //! server modules directly, e.g. to drive a real `pi` process end-to-end
 //! over a real WebSocket connection.
 
+pub mod agent_token;
 pub mod config;
+pub mod registry;
 pub mod rpc;
 pub mod server;
+pub mod session;
 pub mod state;

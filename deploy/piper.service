@@ -1,13 +1,16 @@
 [Unit]
-Description=Piper - remote control bridge for a pi coding-agent session
+Description=Piper Hub - multi-session remote control for pi coding-agent sessions
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 
-# Run as the user that owns the target project and has an authenticated
-# `pi` (credentials live under that user's ~/.pi/agent/auth.json).
+# Run as the same user who runs `pi` interactively and whose
+# ~/.pi/agent/piper/agent-token piper-agent extensions will read (see
+# SPEC.md §7). This is also the user with an authenticated `pi`
+# (credentials live under ~/.pi/agent/auth.json) if PIPER_PROJECT_DIR
+# is used for an optional headless session.
 User=YOUR_USER
 
 # See deploy/piper.env.example. Keep this file's permissions restrictive
@@ -16,9 +19,6 @@ EnvironmentFile=/etc/piper/piper.env
 
 ExecStart=/usr/local/bin/piper
 
-# The `pi` process management module treats a crashed/exited child as
-# fatal for Piper itself (see src/rpc/process.rs); systemd is what
-# actually restarts the service afterwards.
 Restart=on-failure
 RestartSec=2
 

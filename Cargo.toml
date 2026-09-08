@@ -44,10 +44,16 @@ clap = { version = "4", features = ["derive", "env"] }
 anyhow = "1"
 thiserror = "2"
 
+# Session ids (registry keys) and agent-command envelope ids.
+uuid = { version = "1", features = ["v4"] }
+
 [dev-dependencies]
 # Only used by integration tests to act as a WebSocket client against the
 # real server.
 tokio-tungstenite = "0.29"
+# Only used by integration tests to act as a plain HTTP client against
+# `/api/sessions`.
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
 
 [profile.release]
 # Single long-running binary: prefer smaller, slightly slower code over
