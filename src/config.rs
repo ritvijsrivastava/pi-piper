@@ -74,6 +74,24 @@ pub struct Config {
     /// `~/.pi/agent/piper/agent-token` (mode 0600 on Unix).
     #[arg(long, env = "PIPER_AGENT_TOKEN_PATH")]
     pub agent_token_path: Option<PathBuf>,
+
+    /// Optional allowlist of Tailscale logins (e.g. `alice@github`) that
+    /// may authenticate to the phone-facing routes (`/ws`, `/ws/control`,
+    /// `/api/sessions`) using the `Tailscale-User-Login` identity header
+    /// that `tailscale serve` stamps onto proxied requests, instead of
+    /// `--token`. Repeat the flag or comma-separate the env var. Empty
+    /// (the default) disables this path entirely and `--token` remains
+    /// required, as before. See `SPEC.md` §7 for the security tradeoff:
+    /// this trusts any local process that can reach Piper's loopback
+    /// port to not forge the header, since Piper cannot distinguish
+    /// `tailscale serve`'s own proxied connections from other local
+    /// connections by peer address alone.
+    #[arg(
+        long = "allowed-tailscale-login",
+        env = "PIPER_ALLOWED_TAILSCALE_LOGINS",
+        value_delimiter = ','
+    )]
+    pub allowed_tailscale_logins: Vec<String>,
 }
 
 impl Config {

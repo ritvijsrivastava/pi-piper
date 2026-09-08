@@ -9,7 +9,7 @@
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
@@ -36,8 +36,11 @@ pub async fn handler(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
     Query(query): Query<WsQuery>,
+    headers: HeaderMap,
 ) -> Response {
-    if !auth::is_authorized(&state.phone_token, query.token.as_deref()) {
+    let authorized = auth::is_authorized(&state.phone_token, query.token.as_deref())
+        || auth::is_authorized_tailscale_identity(&state.allowed_tailscale_logins, &headers);
+    if !authorized {
         return (StatusCode::UNAUTHORIZED, "missing or invalid token").into_response();
     }
 

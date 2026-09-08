@@ -97,6 +97,7 @@ what the systemd deployment uses so secrets never appear in `ps` output:
 | `--agent-token-path` | `PIPER_AGENT_TOKEN_PATH` | Where to persist a generated agent token. Defaults to `~/.pi/agent/piper/agent-token`. |
 | `--project-dir` | `PIPER_PROJECT_DIR` | Optional: also spawn a headless `pi --mode rpc` for one project with no terminal open (v1-compatible fallback, see `SPEC.md` §10). Most setups don't need this. |
 | `--session`, `--no-session`, `--pi-arg` | `PIPER_SESSION`, `PIPER_NO_SESSION` | Only relevant together with `--project-dir`. |
+| `--allowed-tailscale-login` (repeatable) | `PIPER_ALLOWED_TAILSCALE_LOGINS` (comma-separated) | Optional: lets `/ws`, `/ws/control`, `/api/sessions` accept the `Tailscale-User-Login` identity header `tailscale serve` stamps onto proxied requests, as an alternative to pasting `--token` into the phone. Off by default. See `SPEC.md` §7.1 for setup and an important caveat before enabling it. |
 
 **Auth note:** there are *two* independent tokens — the phone token
 above, and a separate agent token that gates `/agent` (where

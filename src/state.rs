@@ -19,14 +19,25 @@ pub struct AppState {
     /// Shared secret `piper-agent` extensions present as `?token=` to
     /// `/agent`. Never sent to the phone. See `SPEC.md` §7.
     pub agent_token: Arc<str>,
+    /// Optional allowlist of Tailscale logins allowed to authenticate to
+    /// the phone-facing routes via the `Tailscale-User-Login` identity
+    /// header instead of `phone_token`. Empty disables this path. See
+    /// `SPEC.md` §7 and `server::auth::is_authorized_tailscale_identity`.
+    pub allowed_tailscale_logins: Arc<[String]>,
 }
 
 impl AppState {
-    pub fn new(registry: Arc<SessionRegistry>, phone_token: String, agent_token: String) -> Self {
+    pub fn new(
+        registry: Arc<SessionRegistry>,
+        phone_token: String,
+        agent_token: String,
+        allowed_tailscale_logins: Vec<String>,
+    ) -> Self {
         Self {
             registry,
             phone_token: Arc::from(phone_token),
             agent_token: Arc::from(agent_token),
+            allowed_tailscale_logins: Arc::from(allowed_tailscale_logins),
         }
     }
 }

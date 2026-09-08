@@ -153,33 +153,46 @@
     const sessions = new Map();
     let searchQuery = "";
 
-    function start() {
-      if (!getToken()) {
-        setStatus("disconnected", "No token set");
+    // No local token is required up front: a request may also be
+    // authorized by the `Tailscale-User-Login` identity header that
+    // `tailscale serve` stamps on automatically (see SPEC.md §7.1),
+    // which this page cannot see or set itself — it's added at the
+    // network layer regardless of what's in localStorage. So always
+    // attempt the request first, and only fall back to prompting for a
+    // token if the Hub actually says 401.
+    async function start() {
+      const authorized = await fetchSnapshot();
+      if (authorized) {
+        connectControlChannel();
+      } else {
+        setStatus("disconnected", "Unauthorized \u2013 set a token");
         settingsPanel.hidden = false;
         render();
-        return;
       }
-      fetchSnapshot();
-      connectControlChannel();
     }
 
+    /** Returns true if the request was authorized (token match or a
+     * Tailscale identity header the Hub accepted), false on a definite
+     * 401. Network/other errors are treated as transient and don't
+     * block trying the control WebSocket too. */
     async function fetchSnapshot() {
       try {
         const response = await fetch(apiUrl(`/api/sessions?token=${encodeURIComponent(getToken())}`));
-        if (!response.ok) return;
+        if (response.status === 401) return false;
+        if (!response.ok) return true;
         const list = await response.json();
         sessions.clear();
         for (const session of list) sessions.set(session.sessionId, session);
         render();
+        return true;
       } catch {
         // /ws/control will populate the list once it connects; a failed
         // initial fetch is not fatal.
+        return true;
       }
     }
 
     function connectControlChannel() {
-      if (!getToken()) return;
       setStatus("connecting", "Connecting\u2026");
       const token = encodeURIComponent(getToken());
       controlSocket = new WebSocket(wsUrl(`/ws/control?token=${token}`));
@@ -367,7 +380,12 @@
     }
 
     function connect() {
-      if (!getToken() || !currentSessionId) return;
+      // Same reasoning as Sessions.start(): don't require a local token,
+      // the Tailscale identity header (if any) travels with the request
+      // regardless. The session list screen already gates entry on a
+      // successful /api/sessions call, so by the time this runs we're
+      // reasonably confident auth works.
+      if (!currentSessionId) return;
       setStatus("connecting", "Connecting\u2026");
       const token = encodeURIComponent(getToken());
       const session = encodeURIComponent(currentSessionId);

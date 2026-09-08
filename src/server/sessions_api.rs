@@ -29,7 +29,9 @@ pub async fn handler(
         .as_deref()
         .or_else(|| auth::extract_bearer(header_token));
 
-    if !auth::is_authorized(&state.phone_token, presented) {
+    let authorized = auth::is_authorized(&state.phone_token, presented)
+        || auth::is_authorized_tailscale_identity(&state.allowed_tailscale_logins, &headers);
+    if !authorized {
         return (StatusCode::UNAUTHORIZED, "missing or invalid token").into_response();
     }
 

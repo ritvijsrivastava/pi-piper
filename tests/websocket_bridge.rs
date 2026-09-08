@@ -36,6 +36,7 @@ fn test_config() -> Config {
         token: TOKEN.to_string(),
         agent_token: Some("unused-in-this-test".to_string()),
         agent_token_path: None,
+        allowed_tailscale_logins: Vec::new(),
     }
 }
 
@@ -61,7 +62,12 @@ async fn spawn_test_server() -> (SocketAddr, Arc<PiProcess>) {
         meta,
     );
 
-    let state = AppState::new(registry, config.token.clone(), "unused".to_string());
+    let state = AppState::new(
+        registry,
+        config.token.clone(),
+        "unused".to_string(),
+        Vec::new(),
+    );
 
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
@@ -163,7 +169,12 @@ async fn rejects_ws_when_session_id_required_but_missing() {
         registry.register(id.to_string(), AgentLink::Headless(pi), meta);
     }
 
-    let state = AppState::new(registry, TOKEN.to_string(), "unused".to_string());
+    let state = AppState::new(
+        registry,
+        TOKEN.to_string(),
+        "unused".to_string(),
+        Vec::new(),
+    );
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let app = server::router(state);

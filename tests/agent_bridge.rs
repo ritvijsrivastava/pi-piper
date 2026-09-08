@@ -23,8 +23,17 @@ const PHONE_TOKEN: &str = "phone-token";
 const AGENT_TOKEN: &str = "agent-token";
 
 async fn spawn_hub() -> SocketAddr {
+    spawn_hub_with_allowed_logins(Vec::new()).await
+}
+
+async fn spawn_hub_with_allowed_logins(allowed_tailscale_logins: Vec<String>) -> SocketAddr {
     let registry = Arc::new(SessionRegistry::new());
-    let state = AppState::new(registry, PHONE_TOKEN.to_string(), AGENT_TOKEN.to_string());
+    let state = AppState::new(
+        registry,
+        PHONE_TOKEN.to_string(),
+        AGENT_TOKEN.to_string(),
+        allowed_tailscale_logins,
+    );
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -190,6 +199,59 @@ async fn disconnecting_agent_removes_session_and_notifies_control_channel() {
     let update = recv_json(&mut control).await;
     assert_eq!(update["type"], "session_disconnected");
     assert_eq!(update["sessionId"], "sess-3");
+}
+
+#[tokio::test]
+async fn sessions_api_accepts_allowed_tailscale_identity_header_without_token() {
+    let addr = spawn_hub_with_allowed_logins(vec!["alice@github".to_string()]).await;
+
+    let response = reqwest::Client::new()
+        .get(format!("http://{addr}/api/sessions"))
+        .header("Tailscale-User-Login", "alice@github")
+        .send()
+        .await
+        .expect("request /api/sessions");
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+}
+
+#[tokio::test]
+async fn sessions_api_rejects_tailscale_identity_header_when_login_not_allowed() {
+    let addr = spawn_hub_with_allowed_logins(vec!["alice@github".to_string()]).await;
+
+    let response = reqwest::Client::new()
+        .get(format!("http://{addr}/api/sessions"))
+        .header("Tailscale-User-Login", "mallory@github")
+        .send()
+        .await
+        .expect("request /api/sessions");
+    assert_eq!(response.status(), reqwest::StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn sessions_api_rejects_tailscale_identity_header_on_funnel_requests() {
+    let addr = spawn_hub_with_allowed_logins(vec!["alice@github".to_string()]).await;
+
+    let response = reqwest::Client::new()
+        .get(format!("http://{addr}/api/sessions"))
+        .header("Tailscale-User-Login", "alice@github")
+        .header("Tailscale-Funnel-Request", "?1")
+        .send()
+        .await
+        .expect("request /api/sessions");
+    assert_eq!(response.status(), reqwest::StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn sessions_api_ignores_tailscale_identity_header_when_allowlist_empty() {
+    let addr = spawn_hub().await;
+
+    let response = reqwest::Client::new()
+        .get(format!("http://{addr}/api/sessions"))
+        .header("Tailscale-User-Login", "alice@github")
+        .send()
+        .await
+        .expect("request /api/sessions");
+    assert_eq!(response.status(), reqwest::StatusCode::UNAUTHORIZED);
 }
 
 /// Minimal HTTP GET without pulling in `reqwest` as a dev-dependency:

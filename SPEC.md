@@ -397,6 +397,43 @@ Everything else about Piper v1's posture is unchanged:
 - Tokens are defense-in-depth on top of Tailscale's network-level
   access control, not the primary boundary.
 
+### 7.1 Optional: Tailscale identity headers instead of the phone token
+
+When `tailscale serve` proxies a request to the Hub, `tailscaled`
+itself has already resolved the caller's tailnet identity (it's how it
+authenticated the connection in the first place) and stamps it onto the
+forwarded HTTP request as a `Tailscale-User-Login` header (plus
+`Tailscale-User-Name` / `Tailscale-User-Profile-Pic`, unused here) —
+confirmed against the `tailscaled` binary's `addTailscaleIdentityHeaders`
+function. It also stamps `Tailscale-Funnel-Request` on anything that
+arrived via Funnel rather than tailnet-only Serve.
+
+Set `--allowed-tailscale-login` (repeatable) or
+`PIPER_ALLOWED_TAILSCALE_LOGINS` (comma-separated) to a list of tailnet
+logins (e.g. `alice@github`) to let `/ws`, `/ws/control`, and
+`/api/sessions` accept a matching `Tailscale-User-Login` header as an
+**additional**, independent way in, on top of (not instead of)
+`PIPER_TOKEN` — either one authorizes the request. Requests carrying
+`Tailscale-Funnel-Request` are always rejected on this path regardless
+of login, as a belt-and-suspenders measure given Piper's Funnel-never
+posture above. Leaving the allowlist empty (the default) disables this
+path entirely; `PIPER_TOKEN` remains required exactly as before.
+
+**Caveat, and why this isn't the default:** the Hub trusts this header
+at face value. That's only sound because it binds to loopback and is
+meant to be reached exclusively through `tailscale serve`'s proxy — but
+unlike a real reverse-proxy setup with a Unix socket only `tailscaled`
+can write to, Piper has no way to cryptographically distinguish a
+connection `tailscaled` actually proxied in from any other local
+process on the same machine that opens a loopback connection and sets
+the same header itself. Only enable `--allowed-tailscale-login` on a
+machine where every local user is already trusted with full control of
+your `pi` sessions (true of most single-user desktops, the primary
+target here). The heavier alternative that closes this gap — making the
+Hub its own tailnet node via `tsnet` instead of sitting behind
+`tailscale serve`, so it can call `LocalAPI`'s `WhoIs` against a real
+tailnet peer address rather than trusting a header — is not implemented.
+
 ## 8. Command mapping table
 
 Commands the phone can send over `/ws?session=<id>` (unchanged RPC
