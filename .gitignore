@@ -4,3 +4,7 @@
 
 # piper-agent (Node/TypeScript pi extension)
 piper-agent/node_modules
+
+# Impeccable working artifacts: ephemeral QA screenshots, not durable
+# design documentation (design.json and surfaces/ are kept).
+.impeccable/review/

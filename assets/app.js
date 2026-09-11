@@ -11,10 +11,15 @@
 //                        protocol directly over /ws?session=<id>
 //                        (SPEC.md §9.2) - Piper's server only relays
 //                        JSON, it does not define a separate wire format.
+//
+// At desktop widths (see style.css `#app-shell`) the session list also
+// doubles as an always-on rail beside the chat pane, Slack/Linear-style;
+// `isDesktop()` below is the one place that decides which layout is live.
 
 (() => {
   const TOKEN_KEY = "piper.token";
   const LAST_SESSION_KEY = "piper.lastSession";
+  const ICON_SPRITE = "/icons/sprite.svg";
 
   // ---- Shared elements --------------------------------------------------
 
@@ -31,13 +36,35 @@
   const sessionListEl = document.getElementById("session-list");
   const sessionListEmpty = document.getElementById("session-list-empty");
   const sessionSearch = document.getElementById("session-search");
+  const sessionAggregate = document.getElementById("session-aggregate");
 
   const chatView = document.getElementById("chat-view");
+  const chatHeader = document.getElementById("chat-header");
+  const chatEmpty = document.getElementById("chat-empty");
   const transcript = document.getElementById("transcript");
+  const composer = document.getElementById("composer");
   const messageInput = document.getElementById("message-input");
   const sendButton = document.getElementById("send-button");
   const abortButton = document.getElementById("abort-button");
   const autocompletePopover = document.getElementById("autocomplete-popover");
+
+  // ---- Layout ---------------------------------------------------------------
+
+  const desktopQuery = window.matchMedia("(min-width: 880px)");
+  function isDesktop() {
+    return desktopQuery.matches;
+  }
+
+  // A touch-primary device (a phone or tablet's on-screen keyboard) has
+  // no convenient Shift key, so Enter has to just be a newline there;
+  // only the Send button submits. A device whose primary pointer is a
+  // mouse/trackpad keeps the familiar Enter-to-send / Shift+Enter-newline
+  // convention. Keyed off pointer capability rather than viewport width,
+  // so it tracks the actual input method rather than window size.
+  const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
+  function isTouchPrimary() {
+    return coarsePointerQuery.matches;
+  }
 
   // ---- Token handling ----------------------------------------------------
 
@@ -67,6 +94,18 @@
 
   function apiUrl(path) {
     return `${window.location.origin}${path}`;
+  }
+
+  // ---- Icons ---------------------------------------------------------------
+
+  function makeIcon(name, extraClass) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", extraClass ? `icon ${extraClass}` : "icon");
+    svg.setAttribute("aria-hidden", "true");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", `${ICON_SPRITE}#icon-${name}`);
+    svg.appendChild(use);
+    return { svg, use };
   }
 
   // ---- Toasts (also used for extension `notify`) -------------------------
@@ -110,22 +149,32 @@
 
   function renderRoute() {
     const route = currentRoute();
+    const desktop = isDesktop();
+
     if (route.view === "chat") {
-      sessionListView.hidden = true;
       chatView.hidden = false;
-      backButton.hidden = false;
-      Sessions.stopControlChannel();
+      sessionListView.hidden = !desktop;
+      backButton.hidden = desktop;
+      // On the phone, one screen owns the control channel at a time; at
+      // desktop widths the rail stays live beside the open chat.
+      if (!desktop) Sessions.stopControlChannel();
+      else Sessions.start();
+      Sessions.setActive(route.sessionId);
       Chat.open(route.sessionId);
     } else {
-      chatView.hidden = true;
+      chatView.hidden = !desktop;
       sessionListView.hidden = false;
       backButton.hidden = true;
       Chat.close();
+      Sessions.setActive(null);
       Sessions.start();
     }
   }
 
   window.addEventListener("hashchange", renderRoute);
+  // A resize/orientation change that crosses the desktop breakpoint needs
+  // the same reflow renderRoute already does on navigation.
+  desktopQuery.addEventListener("change", renderRoute);
   backButton.addEventListener("click", navigateToSessions);
 
   // ---- Settings -------------------------------------------------------------
@@ -152,6 +201,10 @@
     /** sessionId -> session summary (camelCase fields, see SPEC.md §6.3) */
     const sessions = new Map();
     let searchQuery = "";
+    /** The session open in the chat pane, highlighted in the rail at
+     * desktop widths; null when the session list itself is the active
+     * screen. */
+    let activeSessionId = null;
 
     // No local token is required up front: a request may also be
     // authorized by the `Tailscale-User-Login` identity header that
@@ -160,7 +213,12 @@
     // network layer regardless of what's in localStorage. So always
     // attempt the request first, and only fall back to prompting for a
     // token if the Hub actually says 401.
+    //
+    // Idempotent: at desktop widths the rail's control channel stays
+    // open across chat navigation, so this may be called on every
+    // route change — it's a no-op once a socket already exists.
     async function start() {
+      if (controlSocket) return;
       const authorized = await fetchSnapshot();
       if (authorized) {
         connectControlChannel();
@@ -221,6 +279,7 @@
 
       controlSocket.addEventListener("close", () => {
         setStatus("disconnected", "Disconnected \u2013 reconnecting\u2026");
+        controlSocket = null;
         scheduleReconnect();
       });
 
@@ -230,7 +289,7 @@
     }
 
     function scheduleReconnect() {
-      if (currentRoute().view !== "sessions") return;
+      if (currentRoute().view !== "sessions" && !isDesktop()) return;
       reconnectTimer = setTimeout(connectControlChannel, reconnectDelayMs);
       reconnectDelayMs = Math.min(reconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS);
     }
@@ -253,6 +312,7 @@
         case "session_meta":
           sessions.set(frame.session.sessionId, frame.session);
           render();
+          if (frame.session.sessionId === activeSessionId) Chat.refreshHeader();
           break;
         case "session_disconnected": {
           const existing = sessions.get(frame.sessionId);
@@ -283,7 +343,54 @@
       return haystack.includes(searchQuery);
     }
 
+    function cwdBasename(cwd) {
+      if (!cwd) return "";
+      const parts = cwd.replace(/\/+$/, "").split("/");
+      return parts[parts.length - 1] || cwd;
+    }
+
+    function displayName(session) {
+      return session.sessionName || cwdBasename(session.cwd) || session.sessionId.slice(0, 8);
+    }
+
+    function statusDotClass(session) {
+      if (!session.connected) return "dot-disconnected";
+      if (session.isStreaming) return "dot-connected dot-pulse";
+      return "dot-idle";
+    }
+
+    function renderAggregate() {
+      if (sessions.size === 0) {
+        sessionAggregate.hidden = true;
+        sessionAggregate.innerHTML = "";
+        return;
+      }
+      let streaming = 0;
+      let idle = 0;
+      let down = 0;
+      for (const session of sessions.values()) {
+        if (!session.connected) down++;
+        else if (session.isStreaming) streaming++;
+        else idle++;
+      }
+      sessionAggregate.innerHTML = "";
+      const stats = [
+        ["stat-streaming", `${streaming} streaming`],
+        ["stat-idle", `${idle} idle`],
+        ["stat-down", `${down} down`],
+      ];
+      for (const [cls, label] of stats) {
+        const el = document.createElement("span");
+        el.className = `stat ${cls}`;
+        el.textContent = label;
+        sessionAggregate.appendChild(el);
+      }
+      sessionAggregate.hidden = false;
+    }
+
     function render() {
+      renderAggregate();
+
       const all = Array.from(sessions.values())
         .filter(matchesSearch)
         .sort((a, b) => (b.lastActivityAtMs || b.connectedAtMs) - (a.lastActivityAtMs || a.connectedAtMs));
@@ -295,18 +402,17 @@
         const item = document.createElement("button");
         item.type = "button";
         item.className = "session-item";
+        if (session.sessionId === activeSessionId) item.classList.add("is-active");
 
         const dot = document.createElement("span");
-        dot.className = `dot session-dot ${
-          !session.connected ? "dot-disconnected" : session.isStreaming ? "dot-connected dot-pulse" : "dot-idle"
-        }`;
+        dot.className = `dot session-dot ${statusDotClass(session)}`;
 
         const body = document.createElement("span");
         body.className = "session-item-body";
 
         const title = document.createElement("span");
         title.className = "session-item-title";
-        title.textContent = session.sessionName || cwdBasename(session.cwd) || session.sessionId.slice(0, 8);
+        title.textContent = displayName(session);
 
         const subtitle = document.createElement("span");
         subtitle.className = "session-item-subtitle";
@@ -335,10 +441,9 @@
       }
     }
 
-    function cwdBasename(cwd) {
-      if (!cwd) return "";
-      const parts = cwd.replace(/\/+$/, "").split("/");
-      return parts[parts.length - 1] || cwd;
+    function setActive(sessionId) {
+      activeSessionId = sessionId;
+      render();
     }
 
     sessionSearch.addEventListener("input", () => {
@@ -346,7 +451,14 @@
       render();
     });
 
-    return { start, stopControlChannel, fetchSnapshot };
+    return {
+      start,
+      stopControlChannel,
+      fetchSnapshot,
+      setActive,
+      getSession: (id) => sessions.get(id),
+      displayName,
+    };
   })();
 
   // ---- Chat screen (SPEC.md §9.2) -------------------------------------------
@@ -363,6 +475,10 @@
     let currentAssistantBubble = null;
     let currentThinkingBubble = null;
     const toolBubbles = new Map();
+    /** Counts tool calls within the current agent turn so chained calls
+     * carry a visible step index (SPEC.md-adjacent: SRE-world raise from
+     * the direction round, not in the original spec). */
+    let toolStepCount = 0;
 
     /** Cached `get_commands` result for slash autocomplete, refreshed once
      * per connection. */
@@ -374,6 +490,7 @@
       currentSessionId = sessionId;
       localStorage.setItem(LAST_SESSION_KEY, sessionId);
       transcript.innerHTML = "";
+      refreshHeader();
       connect();
     }
 
@@ -384,6 +501,34 @@
       currentSessionId = null;
       setStreaming(false);
       toolBubbles.clear();
+      chatHeader.removeAttribute("data-visible");
+      chatHeader.innerHTML = "";
+      chatEmpty.hidden = false;
+      transcript.hidden = true;
+      composer.hidden = true;
+    }
+
+    /** Populates the chat pane's own header (session name + path) from
+     * whatever the Sessions module currently knows; called on open() and
+     * again whenever a control-channel update touches this session while
+     * it's the active one (desktop rail stays live beside an open chat). */
+    function refreshHeader() {
+      if (!currentSessionId) return;
+      const session = Sessions.getSession(currentSessionId);
+      chatHeader.innerHTML = "";
+      const title = document.createElement("span");
+      title.textContent = session ? Sessions.displayName(session) : currentSessionId.slice(0, 8);
+      chatHeader.appendChild(title);
+      if (session?.cwd) {
+        const path = document.createElement("span");
+        path.className = "session-item-subtitle";
+        path.textContent = session.cwd;
+        chatHeader.appendChild(path);
+      }
+      chatHeader.setAttribute("data-visible", "true");
+      chatEmpty.hidden = true;
+      transcript.hidden = false;
+      composer.hidden = false;
     }
 
     function connect() {
@@ -450,19 +595,40 @@
     }
 
     /** Collapsible tool-call card using native <details>, so expand/collapse
-     * needs no extra JS. */
-    function appendToolCard(toolCallId, toolName, argsSummary) {
+     * needs no extra JS. Icon starts as a wrench (running), swaps to a
+     * check or x on completion; a chained call within the same turn (the
+     * second tool call onward) carries a small step badge. */
+    function appendToolCard(toolCallId, toolName, args) {
+      toolStepCount += 1;
+      const stepIndex = toolStepCount;
+
       const details = document.createElement("details");
       details.className = "bubble bubble-tool";
+
       const summary = document.createElement("summary");
-      summary.textContent = `\u{1F527} ${toolName} ${argsSummary}`.trim();
+      const { svg: icon, use: iconUse } = makeIcon("wrench", "tool-icon");
+      const name = document.createElement("span");
+      name.className = "tool-name";
+      name.textContent = toolName;
+      const argsEl = document.createElement("span");
+      argsEl.className = "tool-args";
+      argsEl.textContent = args;
+      summary.append(icon, name, argsEl);
+
+      if (stepIndex > 1) {
+        const step = document.createElement("span");
+        step.className = "tool-step";
+        step.textContent = `#${stepIndex}`;
+        summary.appendChild(step);
+      }
+
       const body = document.createElement("pre");
       body.className = "tool-body";
       body.textContent = "";
       details.append(summary, body);
       transcript.appendChild(details);
       transcript.scrollTop = transcript.scrollHeight;
-      toolBubbles.set(toolCallId, { details, summary, body, toolName });
+      toolBubbles.set(toolCallId, { details, summary, body, toolName, icon, iconUse, argsEl });
       return details;
     }
 
@@ -504,7 +670,7 @@
     function setStreaming(streaming) {
       isStreaming = streaming;
       abortButton.hidden = !streaming;
-      sendButton.textContent = streaming ? "Steer" : "Send";
+      sendButton.lastChild.textContent = streaming ? "Steer" : "Send";
       if (!streaming) {
         currentAssistantBubble = null;
         currentThinkingBubble = null;
@@ -520,6 +686,7 @@
           break;
         case "agent_start":
           setStreaming(true);
+          toolStepCount = 0;
           break;
         case "agent_settled":
           setStreaming(false);
@@ -550,8 +717,9 @@
         case "tool_execution_end": {
           const card = toolBubbles.get(event.toolCallId);
           if (card) {
-            const icon = event.isError ? "\u274C" : "\u2705";
-            card.summary.textContent = `${icon} ${card.toolName}`;
+            card.iconUse.setAttribute("href", `${ICON_SPRITE}#icon-${event.isError ? "x" : "check"}`);
+            card.icon.classList.add(event.isError ? "tool-icon-error" : "tool-icon-ok");
+            card.argsEl.hidden = true;
             card.body.textContent = (event.result?.content || [])
               .filter((block) => block.type === "text")
               .map((block) => block.text)
@@ -728,14 +896,14 @@
       updateAutocomplete();
     });
     messageInput.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter" && !ev.shiftKey) {
+      if (ev.key === "Enter" && !ev.shiftKey && !isTouchPrimary()) {
         ev.preventDefault();
         submitMessage();
       }
       if (ev.key === "Escape") hideAutocomplete();
     });
 
-    return { open, close };
+    return { open, close, refreshHeader };
   })();
 
   // ---- Startup ----------------------------------------------------------------

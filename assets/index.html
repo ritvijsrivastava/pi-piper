@@ -3,70 +3,108 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#111827" />
+    <meta name="theme-color" content="#0a0d12" />
     <title>Piper</title>
     <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="icon" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="preload" href="/fonts/inter-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/jetbrains-mono-variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <header id="status-bar">
-      <button id="back-button" type="button" aria-label="Back to sessions" hidden>&#8592;</button>
-      <span id="status-dot" class="dot dot-disconnected"></span>
-      <span id="status-text">Connecting&hellip;</span>
-      <button id="settings-toggle" type="button" aria-label="Settings">&#9881;</button>
+      <div id="brand">
+        <img class="brand-mark" src="/icons/icon.svg" width="22" height="22" alt="" />
+        <span class="brand-name">Piper</span>
+      </div>
+      <button id="back-button" type="button" aria-label="Back to sessions" hidden>
+        <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-arrow-left" /></svg>
+      </button>
+      <div id="connection">
+        <span id="status-dot" class="dot dot-disconnected"></span>
+        <span id="status-text">Connecting&hellip;</span>
+      </div>
+      <button id="settings-toggle" type="button" aria-label="Settings">
+        <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-settings" /></svg>
+      </button>
     </header>
 
     <section id="settings" hidden>
       <label for="token-input">Access token</label>
       <input id="token-input" type="password" autocomplete="off" placeholder="Shared token" />
       <button id="settings-save" type="button">Save &amp; connect</button>
-      <p class="hint">
-        The token is the shared secret configured on the Piper Hub
-        (<code>--token</code> / <code>PIPER_TOKEN</code>). It is stored only
-        in this browser's local storage. This is the phone token — never
-        the separate agent token used by <code>piper-agent</code>. Not
-        needed if the Hub was started with
-        <code>--allowed-tailscale-login</code> for your login and you're
-        connecting through <code>tailscale serve</code> — this panel only
-        appears when neither that nor a stored token authorized you.
-      </p>
+      <details>
+        <summary>
+          <span>Why is this here?</span>
+          <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-chevron-down" /></svg>
+        </summary>
+        <p class="hint">
+          The token is the shared secret configured on the Piper Hub
+          (<code>--token</code> / <code>PIPER_TOKEN</code>). It is stored only
+          in this browser's local storage. This is the phone token — never
+          the separate agent token used by <code>piper-agent</code>. Not
+          needed if the Hub was started with
+          <code>--allowed-tailscale-login</code> for your login and you're
+          connecting through <code>tailscale serve</code> — this panel only
+          appears when neither that nor a stored token authorized you.
+        </p>
+      </details>
     </section>
 
-    <!-- Session list ("home") screen: one entry per registered session,
-         Claude-style. See SPEC.md §9.1. -->
-    <main id="session-list-view">
-      <div id="session-search-bar">
-        <input id="session-search" type="search" placeholder="Search sessions" aria-label="Search sessions" />
-      </div>
-      <div id="session-list"></div>
-      <p id="session-list-empty" class="hint" hidden>
-        No sessions connected. Run <code>/rc</code> in a pi terminal to see it
-        here.
-      </p>
-    </main>
-
-    <!-- Chat screen: one running session's transcript + composer. See
-         SPEC.md §9.2. Hidden until a session is selected. -->
-    <main id="chat-view" hidden>
-      <div id="transcript" aria-live="polite"></div>
-
-      <div id="autocomplete-popover" hidden></div>
-
-      <footer id="composer">
-        <textarea
-          id="message-input"
-          rows="1"
-          placeholder="Message pi&hellip; (/ for commands)"
-          aria-label="Message"
-        ></textarea>
-        <div id="composer-actions">
-          <button id="abort-button" type="button" hidden>Abort</button>
-          <button id="send-button" type="button">Send</button>
+    <div id="app-shell">
+      <!-- Session list ("home") screen: one entry per registered session,
+           Claude-style. See SPEC.md §9.1. Doubles as the always-on rail
+           at desktop widths. -->
+      <main id="session-list-view">
+        <div id="session-search-bar">
+          <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-search" /></svg>
+          <input id="session-search" type="search" placeholder="Search sessions" aria-label="Search sessions" />
         </div>
-      </footer>
-    </main>
+        <div id="session-aggregate" hidden></div>
+        <div id="session-list"></div>
+        <p id="session-list-empty" class="hint" hidden>
+          <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-activity" /></svg>
+          No sessions connected. Run <code>/rc</code> in a pi terminal to see it
+          here.
+        </p>
+      </main>
+
+      <!-- Chat screen: one running session's transcript + composer. See
+           SPEC.md §9.2. Hidden on mobile until a session is selected;
+           always present as the second pane at desktop widths. -->
+      <main id="chat-view" hidden>
+        <div id="chat-header"></div>
+        <div id="chat-empty">
+          <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-activity" /></svg>
+          <span>Select a session to view its transcript.</span>
+        </div>
+        <div id="transcript" aria-live="polite"></div>
+
+        <div id="autocomplete-popover" hidden></div>
+
+        <footer id="composer">
+          <textarea
+            id="message-input"
+            rows="1"
+            placeholder="Message pi&hellip; (/ for commands)"
+            aria-label="Message"
+            enterkeyhint="enter"
+          ></textarea>
+          <div id="composer-actions">
+            <button id="abort-button" type="button" hidden>
+              <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-square" /></svg>
+              Abort
+            </button>
+            <button id="send-button" type="button">
+              <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-send" /></svg>
+              Send
+            </button>
+          </div>
+        </footer>
+      </main>
+    </div>
 
     <div id="toast-container" aria-live="polite"></div>
 

@@ -13,14 +13,18 @@
 // very next reload, with the cache only kicking in when actually
 // offline. Bump CACHE_NAME on a breaking app-shell change if you ever
 // need to force-evict old entries immediately.
-const CACHE_NAME = "piper-shell-v3";
+const CACHE_NAME = "piper-shell-v4";
 const APP_SHELL = [
   "/",
   "/style.css",
   "/app.js",
   "/manifest.json",
+  "/icons/icon.svg",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/icons/sprite.svg",
+  "/fonts/inter-variable.woff2",
+  "/fonts/jetbrains-mono-variable.woff2",
 ];
 
 self.addEventListener("install", (event) => {
