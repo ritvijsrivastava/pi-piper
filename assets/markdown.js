@@ -169,16 +169,17 @@
           fence = null;
           fenceLines = [];
         } else {
-          fenceLines.push(line);
+          const indentation = line.match(/^ */)?.[0].length || 0;
+          fenceLines.push(line.slice(Math.min(fence.indent, indentation)));
         }
         continue;
       }
 
-      const fenceMatch = /^\s{0,3}(`{3,}|~{3,})\s*(.*)$/.exec(line);
-      if (fenceMatch) {
+      const fenceMatch = /^( *)(`{3,}|~{3,})\s*(.*)$/.exec(line);
+      if (fenceMatch && fenceMatch[1].length <= 3) {
         flushParagraph();
         flushList();
-        fence = { marker: fenceMatch[1][0], language: fenceMatch[2] };
+        fence = { marker: fenceMatch[2][0], language: fenceMatch[3], indent: fenceMatch[1].length };
         fenceLines = [];
         continue;
       }

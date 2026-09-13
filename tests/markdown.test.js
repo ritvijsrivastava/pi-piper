@@ -23,7 +23,7 @@ test("renders common Markdown blocks and inline formatting", () => {
 });
 
 test("renders fenced code with a language and neutral syntax emphasis", () => {
-  const output = renderMarkdown("```javascript\nconst count = 1;\n// comment\n<script>\n```");
+  const output = renderMarkdown("   ```javascript\n   const count = 1;\n   // comment\n   <script>\n   ```");
 
   assert.match(output, /<pre class="markdown-code" data-language="javascript">/);
   assert.match(output, /code-token-keyword/);

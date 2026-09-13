@@ -830,9 +830,17 @@ button:disabled {
   text-underline-offset: 0.15em;
 }
 
-.bubble-user.markdown-body a {
+.bubble-user.markdown-body a,
+.bubble-user.markdown-body blockquote {
   color: var(--on-accent);
+}
+
+.bubble-user.markdown-body a {
   font-weight: 600;
+}
+
+.bubble-user.markdown-body blockquote {
+  border-color: var(--on-accent);
 }
 
 .markdown-body code {
