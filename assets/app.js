@@ -531,6 +531,7 @@
       chatEmpty.hidden = true;
       transcript.hidden = false;
       composer.hidden = false;
+      autoResizeInput();
     }
 
     function connect() {
@@ -917,6 +918,9 @@
       }
       if (ev.key === "Escape") hideAutocomplete();
     });
+
+    window.addEventListener("resize", autoResizeInput);
+    window.visualViewport?.addEventListener("resize", autoResizeInput);
 
     return { open, close, refreshHeader };
   })();
