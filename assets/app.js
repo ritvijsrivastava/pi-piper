@@ -20,6 +20,7 @@
   const TOKEN_KEY = "piper.token";
   const LAST_SESSION_KEY = "piper.lastSession";
   const ICON_SPRITE = "/icons/sprite.svg";
+  const markdownRenderer = window.PiperMarkdown;
 
   // ---- Shared elements --------------------------------------------------
 
@@ -473,6 +474,7 @@
 
     let isStreaming = false;
     let currentAssistantBubble = null;
+    let currentAssistantMarkdown = "";
     let currentThinkingBubble = null;
     const toolBubbles = new Map();
     /** Counts tool calls within the current agent turn so chained calls
@@ -585,10 +587,19 @@
 
     // ---- Rendering ----------------------------------------------------------
 
-    function appendBubble(className, text) {
+    function setBubbleContent(bubble, text, markdown = false) {
+      if (markdown && markdownRenderer) {
+        bubble.classList.add("markdown-body");
+        bubble.innerHTML = markdownRenderer.renderMarkdown(text);
+      } else {
+        bubble.textContent = text;
+      }
+    }
+
+    function appendBubble(className, text, markdown = false) {
       const bubble = document.createElement("div");
       bubble.className = `bubble ${className}`;
-      bubble.textContent = text;
+      setBubbleContent(bubble, text, markdown);
       transcript.appendChild(bubble);
       transcript.scrollTop = transcript.scrollHeight;
       return bubble;
@@ -650,11 +661,11 @@
     function renderHistoryMessage(message) {
       switch (message.role) {
         case "user":
-          appendBubble("bubble-user", extractText(message.content));
+          appendBubble("bubble-user", extractText(message.content), true);
           break;
         case "assistant": {
           const text = extractText(message.content);
-          if (text) appendBubble("bubble-assistant", text);
+          if (text) appendBubble("bubble-assistant", text, true);
           break;
         }
         case "bashExecution":
@@ -673,6 +684,7 @@
       sendButton.lastChild.textContent = streaming ? "Steer" : "Send";
       if (!streaming) {
         currentAssistantBubble = null;
+        currentAssistantMarkdown = "";
         currentThinkingBubble = null;
       }
     }
@@ -693,9 +705,10 @@
           break;
         case "message_start":
           if (event.message.role === "user") {
-            appendBubble("bubble-user", extractText(event.message.content));
+            appendBubble("bubble-user", extractText(event.message.content), true);
           } else if (event.message.role === "assistant") {
             currentAssistantBubble = null;
+            currentAssistantMarkdown = "";
             currentThinkingBubble = null;
           }
           break;
@@ -706,8 +719,9 @@
           if (event.message.role === "assistant") {
             const text = extractText(event.message.content);
             if (text) {
-              if (!currentAssistantBubble) currentAssistantBubble = appendBubble("bubble-assistant", "");
-              currentAssistantBubble.textContent = text;
+              currentAssistantMarkdown = text;
+              if (!currentAssistantBubble) currentAssistantBubble = appendBubble("bubble-assistant", "", true);
+              setBubbleContent(currentAssistantBubble, currentAssistantMarkdown, true);
             }
           }
           break;
@@ -767,8 +781,9 @@
     function handleAssistantDelta(delta) {
       switch (delta.type) {
         case "text_delta":
-          if (!currentAssistantBubble) currentAssistantBubble = appendBubble("bubble-assistant", "");
-          currentAssistantBubble.textContent += delta.delta;
+          if (!currentAssistantBubble) currentAssistantBubble = appendBubble("bubble-assistant", "", true);
+          currentAssistantMarkdown += delta.delta;
+          setBubbleContent(currentAssistantBubble, currentAssistantMarkdown, true);
           transcript.scrollTop = transcript.scrollHeight;
           break;
         case "thinking_delta":
