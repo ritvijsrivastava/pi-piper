@@ -13,11 +13,12 @@
 // very next reload, with the cache only kicking in when actually
 // offline. Bump CACHE_NAME on a breaking app-shell change if you ever
 // need to force-evict old entries immediately.
-const CACHE_NAME = "piper-shell-v5";
+const CACHE_NAME = "piper-shell-v6";
 const APP_SHELL = [
   "/",
   "/style.css",
   "/markdown.js",
+  "/attachments.js",
   "/app.js",
   "/manifest.json",
   "/icons/icon.svg",

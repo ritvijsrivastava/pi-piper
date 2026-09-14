@@ -21,6 +21,7 @@
   const LAST_SESSION_KEY = "piper.lastSession";
   const ICON_SPRITE = "/icons/sprite.svg";
   const markdownRenderer = window.PiperMarkdown;
+  const attachmentTools = window.PiperAttachments;
 
   // ---- Shared elements --------------------------------------------------
 
@@ -47,6 +48,9 @@
   const messageInput = document.getElementById("message-input");
   const sendButton = document.getElementById("send-button");
   const abortButton = document.getElementById("abort-button");
+  const attachButton = document.getElementById("attach-button");
+  const attachmentInput = document.getElementById("attachment-input");
+  const attachmentPreviews = document.getElementById("attachment-previews");
   const autocompletePopover = document.getElementById("autocomplete-popover");
 
   // ---- Layout ---------------------------------------------------------------
@@ -485,6 +489,7 @@
     /** Cached `get_commands` result for slash autocomplete, refreshed once
      * per connection. */
     let commandCache = [];
+    let pendingAttachments = [];
 
     function open(sessionId) {
       if (currentSessionId === sessionId && socket) return;
@@ -502,6 +507,7 @@
       socket = null;
       currentSessionId = null;
       setStreaming(false);
+      clearAttachments();
       toolBubbles.clear();
       chatHeader.removeAttribute("data-visible");
       chatHeader.innerHTML = "";
@@ -606,6 +612,33 @@
       return bubble;
     }
 
+    function extractImages(content) {
+      if (!Array.isArray(content)) return [];
+      return content.filter((block) => {
+        const mimeType = typeof block?.mimeType === "string" ? block.mimeType.toLowerCase() : "";
+        return block?.type === "image" && /^image\/(jpeg|png|webp|gif)$/.test(mimeType) && typeof block.data === "string";
+      });
+    }
+
+    function appendImageBlocks(bubble, images) {
+      for (const image of images) {
+        const figure = document.createElement("figure");
+        figure.className = "message-attachment-image";
+        const imageEl = document.createElement("img");
+        imageEl.loading = "lazy";
+        imageEl.alt = image.name || "Attached image";
+        imageEl.src = image.data.startsWith("data:") ? image.data : `data:${image.mimeType};base64,${image.data}`;
+        figure.appendChild(imageEl);
+        bubble.appendChild(figure);
+      }
+    }
+
+    function appendMessageBubble(className, content, markdown = false) {
+      const bubble = appendBubble(className, extractText(content), markdown);
+      appendImageBlocks(bubble, extractImages(content));
+      return bubble;
+    }
+
     /** Collapsible tool-call card using native <details>, so expand/collapse
      * needs no extra JS. Icon starts as a wrench (running), swaps to a
      * check or x on completion; a chained call within the same turn (the
@@ -662,11 +695,12 @@
     function renderHistoryMessage(message) {
       switch (message.role) {
         case "user":
-          appendBubble("bubble-user", extractText(message.content), true);
+          appendMessageBubble("bubble-user", message.content, true);
           break;
         case "assistant": {
           const text = extractText(message.content);
-          if (text) appendBubble("bubble-assistant", text, true);
+          const images = extractImages(message.content);
+          if (text || images.length > 0) appendMessageBubble("bubble-assistant", message.content, true);
           break;
         }
         case "bashExecution":
@@ -706,7 +740,7 @@
           break;
         case "message_start":
           if (event.message.role === "user") {
-            appendBubble("bubble-user", extractText(event.message.content), true);
+            appendMessageBubble("bubble-user", event.message.content, true);
           } else if (event.message.role === "assistant") {
             currentAssistantBubble = null;
             currentAssistantMarkdown = "";
@@ -840,19 +874,115 @@
       }
     }
 
-    // ---- Composer + slash autocomplete ----------------------------------------
+    // ---- Composer + attachments + slash autocomplete -------------------------
+
+    function formatAttachmentSize(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function clearAttachments() {
+      pendingAttachments = [];
+      attachmentInput.value = "";
+      renderAttachmentPreviews();
+    }
+
+    function renderAttachmentPreviews() {
+      attachmentPreviews.innerHTML = "";
+      attachmentPreviews.hidden = pendingAttachments.length === 0;
+      for (const [index, attachment] of pendingAttachments.entries()) {
+        const item = document.createElement("div");
+        item.className = "attachment-chip";
+        item.setAttribute("role", "listitem");
+
+        if (attachment.kind === "image") {
+          const preview = document.createElement("img");
+          preview.className = "attachment-chip-preview";
+          preview.src = attachment.dataUrl;
+          preview.alt = "";
+          item.appendChild(preview);
+        } else {
+          const type = document.createElement("span");
+          type.className = "attachment-chip-type";
+          type.textContent = attachment.language.toUpperCase();
+          item.appendChild(type);
+        }
+
+        const details = document.createElement("span");
+        details.className = "attachment-chip-details";
+        const name = document.createElement("span");
+        name.className = "attachment-chip-name";
+        name.textContent = attachment.name;
+        const size = document.createElement("span");
+        size.className = "attachment-chip-size";
+        size.textContent = formatAttachmentSize(attachment.size);
+        details.append(name, size);
+        item.appendChild(details);
+
+        const remove = document.createElement("button");
+        remove.className = "attachment-chip-remove";
+        remove.type = "button";
+        remove.setAttribute("aria-label", `Remove ${attachment.name}`);
+        remove.title = `Remove ${attachment.name}`;
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        icon.classList.add("icon");
+        icon.setAttribute("aria-hidden", "true");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", `${ICON_SPRITE}#icon-x`);
+        icon.appendChild(use);
+        remove.appendChild(icon);
+        remove.addEventListener("click", () => {
+          pendingAttachments.splice(index, 1);
+          renderAttachmentPreviews();
+        });
+        item.appendChild(remove);
+        attachmentPreviews.appendChild(item);
+      }
+    }
+
+    async function handleAttachmentSelection() {
+      const files = Array.from(attachmentInput.files || []);
+      attachmentInput.value = "";
+      let totalBytes = pendingAttachments.reduce((sum, attachment) => sum + attachment.size, 0);
+
+      for (const file of files) {
+        if (totalBytes + file.size > attachmentTools.MAX_TOTAL_BYTES) {
+          showToast("Attachments cannot exceed 4 MB total", "warning");
+          continue;
+        }
+        try {
+          const attachment = await attachmentTools.readFile(file);
+          pendingAttachments.push(attachment);
+          totalBytes += attachment.size;
+        } catch (error) {
+          showToast(error instanceof Error ? error.message : `Could not attach ${file.name}`, "warning");
+        }
+      }
+      renderAttachmentPreviews();
+    }
 
     function submitMessage() {
       const text = messageInput.value.trim();
-      if (!text) return;
+      if (!text && pendingAttachments.length === 0) return;
       hideAutocomplete();
 
-      if (isStreaming) {
-        send({ type: "prompt", message: text, streamingBehavior: "steer" });
-      } else {
-        send({ type: "prompt", message: text });
-      }
+      const images = pendingAttachments
+        .filter((attachment) => attachment.kind === "image")
+        .map(({ data, mimeType }) => ({ type: "image", data, mimeType }));
+      const textFiles = pendingAttachments
+        .filter((attachment) => attachment.kind === "text")
+        .map((attachment) => attachmentTools.buildTextBlock(attachment));
+      const message = [
+        text,
+        ...textFiles,
+      ].filter(Boolean).join("\n\n") || (images.length > 0 ? "Please inspect the attached image(s)." : "Please review the attached file(s).");
+      const command = { type: "prompt", message };
+      if (images.length > 0) command.images = images;
+      if (isStreaming) command.streamingBehavior = "steer";
+      send(command);
       messageInput.value = "";
+      clearAttachments();
       autoResizeInput();
     }
 
@@ -904,6 +1034,8 @@
       autocompletePopover.hidden = false;
     }
 
+    attachButton.addEventListener("click", () => attachmentInput.click());
+    attachmentInput.addEventListener("change", handleAttachmentSelection);
     sendButton.addEventListener("click", submitMessage);
     abortButton.addEventListener("click", () => send({ type: "abort" }));
 
