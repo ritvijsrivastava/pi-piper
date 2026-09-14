@@ -3,14 +3,17 @@
 // SPEC.md (in the piper repo) for the architecture and
 // piper-agent/README.md for setup and known limitations.
 
-import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { createCommandHandler } from "./command-dispatch.ts";
 import { rememberCommandCtx } from "./context-cache.ts";
 import { registerEventForwarding } from "./event-bridge.ts";
 import { HubClient } from "./hub-client.ts";
 
+const RC_STATUS_ID = "piper-rc";
+
 export default function (pi: ExtensionAPI) {
   let client: HubClient | undefined;
+  let activeStatusContext: ExtensionContext | undefined;
   let clientGeneration = 0;
   let replacingSession = false;
 
@@ -34,6 +37,8 @@ export default function (pi: ExtensionAPI) {
 
   function start(ctx: ExtensionCommandContext): void {
     rememberCommandCtx(ctx);
+    activeStatusContext = ctx;
+    ctx.ui.setStatus(RC_STATUS_ID, ctx.ui.theme.fg("warning", "RC: connecting"));
     const generation = ++clientGeneration;
     client?.close();
     // Tracks the last status a notification was shown for, so a Hub
@@ -56,11 +61,18 @@ export default function (pi: ExtensionAPI) {
         // context unless this callback still belongs to the active client.
         if (generation !== clientGeneration) return;
         if (status === "connected") {
+          ctx.ui.setStatus(RC_STATUS_ID, ctx.ui.theme.fg("success", "RC: connected"));
           ctx.ui.notify("piper: connected.", "info");
-        } else if (status === "error" && lastNotified !== "error") {
-          ctx.ui.notify(`piper: ${detail}`, "warning");
-        } else if (status === "disconnected" && lastNotified === "connected") {
-          ctx.ui.notify("piper: disconnected from the Hub \u2013 retrying\u2026", "warning");
+        } else if (status === "error") {
+          ctx.ui.setStatus(RC_STATUS_ID, ctx.ui.theme.fg("error", "RC: error"));
+          if (lastNotified !== "error") ctx.ui.notify(`piper: ${detail}`, "warning");
+        } else if (status === "disconnected") {
+          ctx.ui.setStatus(RC_STATUS_ID, ctx.ui.theme.fg("warning", "RC: reconnecting"));
+          if (lastNotified === "connected") {
+            ctx.ui.notify("piper: disconnected from the Hub \u2013 retrying\u2026", "warning");
+          }
+        } else if (status === "connecting") {
+          ctx.ui.setStatus(RC_STATUS_ID, ctx.ui.theme.fg("warning", "RC: connecting"));
         }
         lastNotified = status;
       },
@@ -68,8 +80,11 @@ export default function (pi: ExtensionAPI) {
     client.connect();
   }
 
-  function stop(): void {
+  function stop(ctx?: ExtensionContext): void {
     clientGeneration += 1;
+    const statusContext = ctx ?? activeStatusContext;
+    statusContext?.ui.setStatus(RC_STATUS_ID, undefined);
+    activeStatusContext = undefined;
     client?.close();
     client = undefined;
   }
@@ -84,12 +99,13 @@ export default function (pi: ExtensionAPI) {
     client?.updateInfo({ sessionName: pi.getSessionName() });
   });
 
-  pi.on("session_shutdown", () => {
+  pi.on("session_shutdown", (_event, ctx) => {
     if (replacingSession) {
       replacingSession = false;
+      stop(ctx);
       return;
     }
-    stop();
+    stop(ctx);
   });
 
   pi.registerCommand("rc", {
@@ -97,7 +113,7 @@ export default function (pi: ExtensionAPI) {
     handler: async (args, ctx) => {
       const sub = args.trim();
       if (sub === "stop") {
-        stop();
+        stop(ctx);
         ctx.ui.notify("piper: disconnected", "info");
         return;
       }

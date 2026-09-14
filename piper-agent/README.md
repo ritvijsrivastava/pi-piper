@@ -31,8 +31,9 @@ same live session.
    ```
    /rc
    ```
-   This connects the session to the Hub. `/rc status` reports the
-   current connection state; `/rc stop` disconnects.
+   This connects the session to the Hub. The pi footer shows `RC: connected`,
+   `RC: connecting`, or `RC: reconnecting` while the bridge is active.
+   `/rc status` reports the current connection state; `/rc stop` disconnects.
 
 ### Configuration (environment variables)
 
