@@ -11,6 +11,7 @@ import { HubClient } from "./hub-client.ts";
 
 export default function (pi: ExtensionAPI) {
   let client: HubClient | undefined;
+  let clientGeneration = 0;
   let replacingSession = false;
 
   const handleCommand = createCommandHandler(
@@ -33,6 +34,7 @@ export default function (pi: ExtensionAPI) {
 
   function start(ctx: ExtensionCommandContext): void {
     rememberCommandCtx(ctx);
+    const generation = ++clientGeneration;
     client?.close();
     // Tracks the last status a notification was shown for, so a Hub
     // outage doesn't produce a fresh toast on every 1–10s reconnect
@@ -49,6 +51,10 @@ export default function (pi: ExtensionAPI) {
       },
       handleCommand,
       (status, detail) => {
+        // A closed client can emit one final status asynchronously. Its
+        // context may already be stale after /new, so never touch that
+        // context unless this callback still belongs to the active client.
+        if (generation !== clientGeneration) return;
         if (status === "connected") {
           ctx.ui.notify("piper: connected.", "info");
         } else if (status === "error" && lastNotified !== "error") {
@@ -63,6 +69,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   function stop(): void {
+    clientGeneration += 1;
     client?.close();
     client = undefined;
   }
