@@ -533,8 +533,9 @@ child-process-linked (headless) sessions.
     (unchanged behavior from v1).
   - `/` triggers autocomplete populated from `get_commands` (fuzzy
     match on name/description).
-  - Attachment button for JPEG/PNG/WebP/GIF images and common text/code files;
-    each file is limited to 1 MiB and the combined selection to 4 MiB.
+  - Attachment button opens Camera, Gallery, and Files choices for
+    JPEG/PNG/WebP/GIF images and common text/code files; each file is limited
+    to 1 MiB and the combined selection to 4 MiB.
     Images use pi's `ImageContent`; text files are included as named fenced
     prompt context. Unsupported file types are rejected before sending.
 - Extension UI dialogs: `select`/`confirm`/`input`/`editor` render as

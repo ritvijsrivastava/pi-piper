@@ -87,8 +87,10 @@
         <footer id="composer">
           <div id="attachment-previews" role="list" aria-label="Attached files" hidden></div>
           <div id="composer-row">
+            <input id="camera-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" tabindex="-1" />
+            <input id="gallery-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple tabindex="-1" />
             <input
-              id="attachment-input"
+              id="files-input"
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif,text/*,.c,.cc,.conf,.cpp,.css,.csv,.env,.go,.h,.html,.ini,.java,.js,.json,.jsx,.log,.md,.mjs,.py,.rb,.rs,.sh,.sql,.svg,.toml,.ts,.tsx,.txt,.xml,.yaml,.yml"
               multiple
@@ -116,6 +118,29 @@
             </div>
           </div>
         </footer>
+
+        <div id="attachment-sheet" hidden>
+          <button id="attachment-sheet-backdrop" type="button" aria-label="Close attachment options"></button>
+          <section id="attachment-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="attachment-sheet-title">
+            <div id="attachment-sheet-handle" aria-hidden="true"></div>
+            <h2 id="attachment-sheet-title">Add attachment</h2>
+            <div id="attachment-source-options">
+              <button class="attachment-source-button" type="button" data-attachment-source="camera">
+                <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-camera" /></svg>
+                <span>Camera</span>
+              </button>
+              <button class="attachment-source-button" type="button" data-attachment-source="gallery">
+                <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-image" /></svg>
+                <span>Gallery</span>
+              </button>
+              <button class="attachment-source-button" type="button" data-attachment-source="files">
+                <svg class="icon" aria-hidden="true"><use href="/icons/sprite.svg#icon-file" /></svg>
+                <span>Files</span>
+              </button>
+            </div>
+            <button id="attachment-sheet-cancel" type="button">Cancel</button>
+          </section>
+        </div>
       </main>
     </div>
 

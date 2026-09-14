@@ -49,7 +49,12 @@
   const sendButton = document.getElementById("send-button");
   const abortButton = document.getElementById("abort-button");
   const attachButton = document.getElementById("attach-button");
-  const attachmentInput = document.getElementById("attachment-input");
+  const cameraInput = document.getElementById("camera-input");
+  const galleryInput = document.getElementById("gallery-input");
+  const filesInput = document.getElementById("files-input");
+  const attachmentSheet = document.getElementById("attachment-sheet");
+  const attachmentSheetBackdrop = document.getElementById("attachment-sheet-backdrop");
+  const attachmentSheetCancel = document.getElementById("attachment-sheet-cancel");
   const attachmentPreviews = document.getElementById("attachment-previews");
   const autocompletePopover = document.getElementById("autocomplete-popover");
 
@@ -507,6 +512,7 @@
       socket = null;
       currentSessionId = null;
       setStreaming(false);
+      if (!attachmentSheet.hidden) closeAttachmentSheet();
       clearAttachments();
       toolBubbles.clear();
       chatHeader.removeAttribute("data-visible");
@@ -876,6 +882,23 @@
 
     // ---- Composer + attachments + slash autocomplete -------------------------
 
+    function openAttachmentSheet() {
+      attachmentSheet.hidden = false;
+      document.body.classList.add("attachment-sheet-open");
+      attachmentSheet.querySelector("[data-attachment-source=\"camera\"]").focus();
+    }
+
+    function closeAttachmentSheet() {
+      attachmentSheet.hidden = true;
+      document.body.classList.remove("attachment-sheet-open");
+      attachButton.focus();
+    }
+
+    function chooseAttachmentSource(input) {
+      closeAttachmentSheet();
+      input.click();
+    }
+
     function formatAttachmentSize(bytes) {
       if (bytes < 1024) return `${bytes} B`;
       if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -884,7 +907,9 @@
 
     function clearAttachments() {
       pendingAttachments = [];
-      attachmentInput.value = "";
+      cameraInput.value = "";
+      galleryInput.value = "";
+      filesInput.value = "";
       renderAttachmentPreviews();
     }
 
@@ -941,9 +966,9 @@
       }
     }
 
-    async function handleAttachmentSelection() {
-      const files = Array.from(attachmentInput.files || []);
-      attachmentInput.value = "";
+    async function handleAttachmentSelection(input) {
+      const files = Array.from(input.files || []);
+      input.value = "";
       let totalBytes = pendingAttachments.reduce((sum, attachment) => sum + attachment.size, 0);
 
       for (const file of files) {
@@ -1034,8 +1059,18 @@
       autocompletePopover.hidden = false;
     }
 
-    attachButton.addEventListener("click", () => attachmentInput.click());
-    attachmentInput.addEventListener("change", handleAttachmentSelection);
+    attachButton.addEventListener("click", openAttachmentSheet);
+    attachmentSheetBackdrop.addEventListener("click", closeAttachmentSheet);
+    attachmentSheetCancel.addEventListener("click", closeAttachmentSheet);
+    attachmentSheet.querySelectorAll("[data-attachment-source]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = { camera: cameraInput, gallery: galleryInput, files: filesInput }[button.dataset.attachmentSource];
+        chooseAttachmentSource(input);
+      });
+    });
+    cameraInput.addEventListener("change", () => handleAttachmentSelection(cameraInput));
+    galleryInput.addEventListener("change", () => handleAttachmentSelection(galleryInput));
+    filesInput.addEventListener("change", () => handleAttachmentSelection(filesInput));
     sendButton.addEventListener("click", submitMessage);
     abortButton.addEventListener("click", () => send({ type: "abort" }));
 
@@ -1049,6 +1084,9 @@
         submitMessage();
       }
       if (ev.key === "Escape") hideAutocomplete();
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && !attachmentSheet.hidden) closeAttachmentSheet();
     });
 
     window.addEventListener("resize", autoResizeInput);

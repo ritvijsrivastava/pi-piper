@@ -1121,6 +1121,78 @@ details.bubble-tool summary::-webkit-details-marker {
   background: var(--bg-raised);
 }
 
+body.attachment-sheet-open {
+  overflow: hidden;
+}
+
+#attachment-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+}
+
+#attachment-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+#attachment-sheet-panel {
+  position: relative;
+  width: 100%;
+  padding: 0.65rem 1rem calc(1rem + var(--safe-bottom));
+  border-top: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--bg-raised);
+}
+
+#attachment-sheet-handle {
+  width: 2.6rem;
+  height: 0.25rem;
+  margin: 0 auto 1rem;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+}
+
+#attachment-sheet-title {
+  margin: 0 0 0.85rem;
+  color: var(--text);
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+
+#attachment-source-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.attachment-source-button {
+  min-height: 5.7rem;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.5rem;
+  background: var(--bg-inset);
+}
+
+.attachment-source-button .icon {
+  width: 1.8rem;
+  height: 1.8rem;
+  color: var(--accent);
+}
+
+#attachment-sheet-cancel {
+  width: 100%;
+  margin-top: 0.65rem;
+}
+
 #message-input {
   flex: 1;
   min-width: 0;
