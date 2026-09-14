@@ -55,7 +55,10 @@ session using `withSession` (see `ctx.newSession()` / `ctx.fork()` /
 `ctx.switchSession()` in pi's extension API) — so a phone that was
 watching a session before `/new` keeps watching (now pointed at a
 "session disconnected" -> "new session connected" transition) without
-you having to type `/rc` again. A plain rename (`/name`) is even
+you having to type `/rc` again. A phone prompt containing exactly `/new`
+is intercepted by the extension and follows the same lifecycle: close
+the old `/rc` registration, create the replacement session, and register
+`/rc` again without exiting the pi process. A plain rename (`/name`) is even
 lighter-weight: it patches the existing registry entry in place and
 never disconnects at all.
 

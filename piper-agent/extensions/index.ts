@@ -11,13 +11,25 @@ import { HubClient } from "./hub-client.ts";
 
 export default function (pi: ExtensionAPI) {
   let client: HubClient | undefined;
+  let replacingSession = false;
 
-  const handleCommand = createCommandHandler(pi, (newCtx: ExtensionCommandContext) => {
-    // Re-registers under the replacement session after a remotely
-    // triggered /new, /fork, or switch_session (/resume) — see
-    // piper-agent/README.md "Following across /new, /fork, /resume".
-    start(newCtx);
-  });
+  const handleCommand = createCommandHandler(
+    pi,
+    (newCtx: ExtensionCommandContext) => {
+      // Re-registers under the replacement session after a remotely
+      // triggered /new, /fork, or switch_session (/resume) — see
+      // piper-agent/README.md "Following across /new, /fork, /resume".
+      start(newCtx);
+    },
+    () => {
+      // A remote `/new` must follow the same lifecycle as typing `/rc stop`,
+      // `/new`, then `/rc`: close the old registration before pi replaces
+      // the session, and keep the replacement's shutdown hook from closing
+      // the freshly reconnected client.
+      replacingSession = true;
+      stop();
+    },
+  );
 
   function start(ctx: ExtensionCommandContext): void {
     rememberCommandCtx(ctx);
@@ -66,6 +78,10 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", () => {
+    if (replacingSession) {
+      replacingSession = false;
+      return;
+    }
     stop();
   });
 

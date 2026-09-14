@@ -35,15 +35,20 @@ function unsupported(command: string): Response {
 /** `reconnect` re-registers under a replacement session's context after
  * `/new`, `/fork`, or `switch_session` — see index.ts. */
 export type ReconnectFn = (ctx: ExtensionCommandContext) => void;
+export type PrepareSessionChangeFn = () => void;
 
-export function createCommandHandler(pi: ExtensionAPI, reconnect: ReconnectFn) {
+export function createCommandHandler(
+  pi: ExtensionAPI,
+  reconnect: ReconnectFn,
+  prepareSessionChange?: PrepareSessionChangeFn,
+) {
   return async function handle(raw: unknown): Promise<Response> {
     const command = raw as Command;
     const type = command?.type ?? "unknown";
     try {
       switch (type) {
         case "prompt":
-          return handlePrompt(pi, command);
+          return handlePrompt(pi, command, reconnect, prepareSessionChange);
         case "steer":
           pi.sendUserMessage(command.message as string, { deliverAs: "steer" });
           return ok(type);
@@ -94,11 +99,11 @@ export function createCommandHandler(pi: ExtensionAPI, reconnect: ReconnectFn) {
         case "get_last_assistant_text":
           return ok(type, { text: getLastAssistantText() });
         case "new_session":
-          return await handleNewSession(reconnect);
+          return await handleNewSession(reconnect, prepareSessionChange);
         case "switch_session":
-          return await handleSwitchSession(command, reconnect);
+          return await handleSwitchSession(command, reconnect, prepareSessionChange);
         case "fork":
-          return await handleFork(command, reconnect);
+          return await handleFork(command, reconnect, prepareSessionChange);
         case "bash":
           return await handleBash(pi, command);
         case "clear_queue":
@@ -130,8 +135,15 @@ function extractText(content: unknown): string {
   return "";
 }
 
-function handlePrompt(pi: ExtensionAPI, command: Command): Response {
-  const message = command.message as string;
+async function handlePrompt(
+  pi: ExtensionAPI,
+  command: Command,
+  reconnect: ReconnectFn,
+  prepareSessionChange?: PrepareSessionChangeFn,
+): Promise<Response> {
+  const message = typeof command.message === "string" ? command.message : "";
+  if (message.trim() === "/new") return handleNewSession(reconnect, prepareSessionChange);
+
   // RPC's `ImageContent` ({type:"image", data, mimeType}) matches
   // pi-ai's `ImageContent` shape exactly, so these pass through as-is.
   const images = command.images as { type: "image"; data: string; mimeType: string }[] | undefined;
@@ -320,8 +332,12 @@ function getLastAssistantText(): string | null {
   return null;
 }
 
-async function handleNewSession(reconnect: ReconnectFn): Promise<Response> {
+async function handleNewSession(
+  reconnect: ReconnectFn,
+  prepareSessionChange?: PrepareSessionChangeFn,
+): Promise<Response> {
   const ctx = getCommandCtx();
+  prepareSessionChange?.();
   const result = await ctx.newSession({
     withSession: async (newCtx) => {
       rememberCommandCtx(newCtx);
@@ -331,8 +347,13 @@ async function handleNewSession(reconnect: ReconnectFn): Promise<Response> {
   return ok("new_session", result);
 }
 
-async function handleSwitchSession(command: Command, reconnect: ReconnectFn): Promise<Response> {
+async function handleSwitchSession(
+  command: Command,
+  reconnect: ReconnectFn,
+  prepareSessionChange?: PrepareSessionChangeFn,
+): Promise<Response> {
   const ctx = getCommandCtx();
+  prepareSessionChange?.();
   const result = await ctx.switchSession(command.sessionPath as string, {
     withSession: async (newCtx) => {
       rememberCommandCtx(newCtx);
@@ -342,8 +363,13 @@ async function handleSwitchSession(command: Command, reconnect: ReconnectFn): Pr
   return ok("switch_session", result);
 }
 
-async function handleFork(command: Command, reconnect: ReconnectFn): Promise<Response> {
+async function handleFork(
+  command: Command,
+  reconnect: ReconnectFn,
+  prepareSessionChange?: PrepareSessionChangeFn,
+): Promise<Response> {
   const ctx = getCommandCtx();
+  prepareSessionChange?.();
   const result = await ctx.fork(command.entryId as string, {
     position: command.position as "before" | "at" | undefined,
     withSession: async (newCtx) => {
