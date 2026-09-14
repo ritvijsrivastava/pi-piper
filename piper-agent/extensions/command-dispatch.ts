@@ -34,7 +34,13 @@ function unsupported(command: string): Response {
 
 /** `reconnect` re-registers under a replacement session's context after
  * `/new`, `/fork`, or `switch_session` — see index.ts. */
-export type ReconnectFn = (ctx: ExtensionCommandContext) => void;
+export type ReconnectContext = ExtensionCommandContext & {
+  sendUserMessage(
+    content: string,
+    options?: { deliverAs?: "steer" | "followUp"; expandPromptTemplates?: boolean },
+  ): Promise<void>;
+};
+export type ReconnectFn = (ctx: ReconnectContext) => void | Promise<void>;
 export type PrepareSessionChangeFn = () => void;
 
 export function createCommandHandler(
@@ -341,7 +347,7 @@ async function handleNewSession(
   const result = await ctx.newSession({
     withSession: async (newCtx) => {
       rememberCommandCtx(newCtx);
-      reconnect(newCtx);
+      await reconnect(newCtx);
     },
   });
   return ok("new_session", result);
@@ -357,7 +363,7 @@ async function handleSwitchSession(
   const result = await ctx.switchSession(command.sessionPath as string, {
     withSession: async (newCtx) => {
       rememberCommandCtx(newCtx);
-      reconnect(newCtx);
+      await reconnect(newCtx);
     },
   });
   return ok("switch_session", result);
@@ -374,7 +380,7 @@ async function handleFork(
     position: command.position as "before" | "at" | undefined,
     withSession: async (newCtx) => {
       rememberCommandCtx(newCtx);
-      reconnect(newCtx);
+      await reconnect(newCtx);
     },
   });
   // rpc.md's `fork` response also includes `text` (the original prompt

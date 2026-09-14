@@ -3,7 +3,11 @@
 // SPEC.md (in the piper repo) for the architecture and
 // piper-agent/README.md for setup and known limitations.
 
-import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionCommandContext,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { createCommandHandler } from "./command-dispatch.ts";
 import { rememberCommandCtx } from "./context-cache.ts";
 import { registerEventForwarding } from "./event-bridge.ts";
@@ -19,11 +23,11 @@ export default function (pi: ExtensionAPI) {
 
   const handleCommand = createCommandHandler(
     pi,
-    (newCtx: ExtensionCommandContext) => {
-      // Re-registers under the replacement session after a remotely
-      // triggered /new, /fork, or switch_session (/resume) — see
-      // piper-agent/README.md "Following across /new, /fork, /resume".
-      start(newCtx);
+    async (newCtx) => {
+      // Run /rc through the fresh replacement context. The old extension
+      // instance is torn down during session replacement, so starting a
+      // HubClient from this old closure does not register the new runtime.
+      await newCtx.sendUserMessage("/rc", { expandPromptTemplates: true });
     },
     () => {
       // A remote `/new` must follow the same lifecycle as typing `/rc stop`,
