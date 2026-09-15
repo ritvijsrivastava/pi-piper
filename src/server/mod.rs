@@ -8,8 +8,8 @@ mod sessions_api;
 mod static_files;
 mod ws;
 
-use axum::routing::get;
 use axum::Router;
+use axum::routing::get;
 
 use crate::state::AppState;
 

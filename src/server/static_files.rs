@@ -4,7 +4,7 @@
 //! deployment is a single self-contained executable with no separate
 //! static file directory to manage or copy around.
 
-use axum::http::{header, StatusCode, Uri};
+use axum::http::{StatusCode, Uri, header};
 use axum::response::{IntoResponse, Response};
 use rust_embed::RustEmbed;
 

@@ -15,11 +15,11 @@ use anyhow::{Context, Result};
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, Command};
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{Mutex, broadcast};
 use tracing::{debug, warn};
 
 use crate::config::Config;
-use crate::rpc::{write_json_line, JsonLineReader};
+use crate::rpc::{JsonLineReader, write_json_line};
 
 /// Capacity of the broadcast channel fanning RPC events out to subscribers
 /// (WebSocket clients). A generous bound absorbs bursts of streaming

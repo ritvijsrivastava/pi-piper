@@ -16,12 +16,12 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::sync::mpsc;
 
 use super::auth;
 use crate::rpc::remote_agent::RemoteAgent;
-use crate::session::{now_ms, AgentLink, SessionKind, SessionMeta};
+use crate::session::{AgentLink, SessionKind, SessionMeta, now_ms};
 use crate::state::AppState;
 
 #[derive(Deserialize)]

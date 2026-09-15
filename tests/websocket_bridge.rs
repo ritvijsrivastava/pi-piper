@@ -11,17 +11,17 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::net::TcpListener;
 use tokio_tungstenite::connect_async;
-use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 
 use pi_piper::config::Config;
 use pi_piper::registry::SessionRegistry;
 use pi_piper::rpc::process::PiProcess;
 use pi_piper::server;
-use pi_piper::session::{now_ms, AgentLink, SessionKind, SessionMeta};
+use pi_piper::session::{AgentLink, SessionKind, SessionMeta, now_ms};
 use pi_piper::state::AppState;
 
 /// Builds a WebSocket upgrade request that looks like it was proxied in

@@ -16,7 +16,7 @@ use pi_piper::config::Config;
 use pi_piper::registry::SessionRegistry;
 use pi_piper::rpc::process::PiProcess;
 use pi_piper::server;
-use pi_piper::session::{now_ms, AgentLink, SessionKind, SessionMeta};
+use pi_piper::session::{AgentLink, SessionKind, SessionMeta, now_ms};
 use pi_piper::state::AppState;
 
 #[tokio::main]

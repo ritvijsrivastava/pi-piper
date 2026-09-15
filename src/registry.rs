@@ -8,10 +8,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::sync::broadcast;
 
-use crate::session::{now_ms, AgentLink, SessionHandle, SessionMeta, SessionSummary};
+use crate::session::{AgentLink, SessionHandle, SessionMeta, SessionSummary, now_ms};
 
 /// Capacity of the `/ws/control` broadcast channel. Generous since
 /// registry-change events are rare (session connects/disconnects,
@@ -252,11 +252,7 @@ fn extract_text_from_content(content: &Value) -> Option<String> {
             }
         }
     }
-    if out.is_empty() {
-        None
-    } else {
-        Some(out)
-    }
+    if out.is_empty() { None } else { Some(out) }
 }
 
 fn truncate_chars(s: &str, max: usize) -> String {

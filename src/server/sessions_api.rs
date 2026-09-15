@@ -2,10 +2,10 @@
 //! PWA's initial load before `/ws/control` is open (and as a fallback);
 //! same summary shape as the control channel.
 
+use axum::Json;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 
 use super::auth;
 use crate::state::AppState;
