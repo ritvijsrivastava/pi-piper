@@ -18,6 +18,7 @@
   "pi": {
     "extensions": ["./pi-piper-agent/extensions/index.ts"]
   },
+  "files": ["pi-piper-agent/extensions", "pi-piper-agent/README.md"],
   "dependencies": {
     "ws": "^8.18.0"
   },
