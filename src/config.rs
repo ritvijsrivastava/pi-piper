@@ -9,64 +9,64 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-/// Piper: multi-session remote control hub for `pi` coding-agent
+/// Pi Piper: multi-session remote control hub for `pi` coding-agent
 /// sessions. See `ARCHITECTURE.md` for how the pieces fit together.
 #[derive(Debug, Parser)]
-#[command(name = "piper", version, about)]
+#[command(name = "pi-piper", version, about)]
 pub struct Config {
     /// Path or name of the `pi` executable to spawn for headless
     /// (fallback) sessions. Only used when `--project-dir` is set.
-    #[arg(long, env = "PIPER_PI_COMMAND", default_value = "pi")]
+    #[arg(long, env = "PI_PIPER_PI_COMMAND", default_value = "pi")]
     pub pi_command: String,
 
     /// Working directory for an optional spawned headless `pi` process
-    /// (Piper v1 behavior, kept as a fallback). Omit this to run Piper as
+    /// (Pi Piper v1 behavior, kept as a fallback). Omit this to run Pi Piper as
     /// a pure hub with no spawned child, relying entirely on
-    /// `piper-agent` (`/rc`) connections for sessions.
-    #[arg(long, env = "PIPER_PROJECT_DIR")]
+    /// `pi-piper-agent` (`/rc`) connections for sessions.
+    #[arg(long, env = "PI_PIPER_PROJECT_DIR")]
     pub project_dir: Option<PathBuf>,
 
     /// Resume a specific pi session file instead of starting a new one.
     /// Only used with `--project-dir`. Mutually exclusive with
     /// `--no-session`.
-    #[arg(long, env = "PIPER_SESSION", conflicts_with = "no_session")]
+    #[arg(long, env = "PI_PIPER_SESSION", conflicts_with = "no_session")]
     pub session: Option<PathBuf>,
 
     /// Run the headless pi in ephemeral mode (`--no-session`); nothing
     /// is persisted to disk. Only used with `--project-dir`.
-    #[arg(long, env = "PIPER_NO_SESSION")]
+    #[arg(long, env = "PI_PIPER_NO_SESSION")]
     pub no_session: bool,
 
     /// Additional raw arguments forwarded verbatim to the headless
     /// `pi --mode rpc` (e.g. `--pi-arg --model --pi-arg
     /// anthropic/claude-opus-4-5`). Only used with `--project-dir`.
-    /// This avoids re-declaring every pi CLI flag as a Piper flag.
+    /// This avoids re-declaring every pi CLI flag as a Pi Piper flag.
     #[arg(long = "pi-arg")]
     pub extra_pi_args: Vec<String>,
 
     /// Address to bind the HTTP/WebSocket server to. Defaults to loopback
     /// only: expose it to your phone via `tailscale serve`, which proxies
     /// from the tailnet (with a valid HTTPS certificate) to this local
-    /// address, rather than binding Piper itself to a non-loopback address.
-    #[arg(long, env = "PIPER_BIND", default_value = "127.0.0.1:4390")]
+    /// address, rather than binding Pi Piper itself to a non-loopback address.
+    #[arg(long, env = "PI_PIPER_BIND", default_value = "127.0.0.1:4390")]
     pub bind: SocketAddr,
 
-    /// Shared secret `piper-agent` extensions must present as `?token=`
+    /// Shared secret `pi-piper-agent` extensions must present as `?token=`
     /// to open `/agent`. `/ws`, `/ws/control`, and `/api/sessions` have
     /// no analogous secret — they authorize any request carrying a
     /// `Tailscale-User-Login` identity header instead, since
     /// `tailscale serve` proxies those connections through loopback and
     /// a peer-address check alone can't tell them apart from a local
-    /// `/agent` connection. If unset, Piper generates one on first run
-    /// and persists it to `--agent-token-path`; `piper-agent` reads it
+    /// `/agent` connection. If unset, Pi Piper generates one on first run
+    /// and persists it to `--agent-token-path`; `pi-piper-agent` reads it
     /// directly from that file, so it never needs to be typed or copied
     /// to the phone. See `ARCHITECTURE.md` for the full model.
-    #[arg(long, env = "PIPER_AGENT_TOKEN")]
+    #[arg(long, env = "PI_PIPER_AGENT_TOKEN")]
     pub agent_token: Option<String>,
 
     /// Where to persist a generated agent token. Defaults to
-    /// `~/.pi/agent/piper/agent-token` (mode 0600 on Unix).
-    #[arg(long, env = "PIPER_AGENT_TOKEN_PATH")]
+    /// `~/.pi/agent/pi-piper/agent-token` (mode 0600 on Unix).
+    #[arg(long, env = "PI_PIPER_AGENT_TOKEN_PATH")]
     pub agent_token_path: Option<PathBuf>,
 }
 

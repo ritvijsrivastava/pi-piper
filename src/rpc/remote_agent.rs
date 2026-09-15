@@ -1,4 +1,4 @@
-//! WebSocket-backed `AgentLink`: represents one `piper-agent` extension
+//! WebSocket-backed `AgentLink`: represents one `pi-piper-agent` extension
 //! connected to the Hub over `/agent` (registration protocol in
 //! `ARCHITECTURE.md`).
 //!

@@ -1,4 +1,4 @@
-//! `/agent`: `piper-agent` extensions connect here to register a live
+//! `/agent`: `pi-piper-agent` extensions connect here to register a live
 //! interactive `pi` session for remote control. The registration
 //! envelope is documented in `ARCHITECTURE.md`.
 //!

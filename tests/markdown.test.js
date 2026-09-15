@@ -7,7 +7,7 @@ const context = { window: {} };
 vm.runInNewContext(fs.readFileSync("assets/markdown.js", "utf8"), context, {
   filename: "assets/markdown.js",
 });
-const renderMarkdown = context.window.PiperMarkdown.renderMarkdown;
+const renderMarkdown = context.window.piPiperMarkdown.renderMarkdown;
 
 test("renders common Markdown blocks and inline formatting", () => {
   const output = renderMarkdown(

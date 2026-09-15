@@ -11,9 +11,9 @@ use crate::registry::SessionRegistry;
 #[derive(Clone)]
 pub struct AppState {
     /// Every currently-registered session (headless-spawned or
-    /// `piper-agent`-connected).
+    /// `pi-piper-agent`-connected).
     pub registry: Arc<SessionRegistry>,
-    /// Shared secret `piper-agent` extensions present as `?token=` to
+    /// Shared secret `pi-piper-agent` extensions present as `?token=` to
     /// `/agent`. Never sent to the phone. The
     /// phone-facing routes (`/ws`, `/ws/control`, `/api/sessions`) have
     /// no analogous secret: they authorize any request carrying a

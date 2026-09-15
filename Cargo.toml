@@ -1,9 +1,23 @@
 [package]
-name = "piper"
+name = "pi-piper"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.85"
 description = "Remote control bridge for the pi coding agent, reachable over Tailscale from a phone."
 license = "MIT"
+repository = "https://github.com/ritvijsrivastava/pi-piper"
+readme = "README.md"
+keywords = ["pi", "coding-agent", "tailscale", "remote-control", "pwa"]
+categories = ["command-line-utilities", "web-programming::http-server"]
+exclude = [".github", "deploy", "scripts", "tests", "pi-piper-agent"]
+
+# Let `cargo binstall pi-piper` fetch the prebuilt release tarball instead of
+# compiling: matches the artifacts produced by .github/workflows/release.yml
+# (each tarball contains a top-level `pi-piper-<target>/pi-piper` binary).
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/pi-piper-{ target }.tar.gz"
+pkg-fmt = "tgz"
+bin-dir = "pi-piper-{ target }/{ bin }{ binary-ext }"
 
 [dependencies]
 # Async runtime: process spawning, IO, sync primitives, timers, signal handling.

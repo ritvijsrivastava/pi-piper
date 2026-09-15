@@ -12,7 +12,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-const HANDOFF_DIR = path.join(homedir(), ".pi", "agent", "piper");
+const HANDOFF_DIR = path.join(homedir(), ".pi", "agent", "pi-piper");
 const HANDOFF_FILE = path.join(HANDOFF_DIR, "rc-handoff.json");
 
 type HandoffMap = Record<string, number>; // session file -> owning pi pid

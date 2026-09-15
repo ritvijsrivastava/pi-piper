@@ -1,6 +1,6 @@
 //! Authorization for WebSocket and HTTP connections.
 //!
-//! This is defense-in-depth, not the primary security boundary: Piper is
+//! This is defense-in-depth, not the primary security boundary: Pi Piper is
 //! designed to be reachable only over a private Tailscale network (see
 //! `README.md`). There are two independent checks, for two different
 //! reasons:
@@ -11,8 +11,8 @@
 //!   present (and the request isn't a Funnel request), the caller is on
 //!   the tailnet, full stop — no shared secret, no per-login allowlist.
 //!   Any device signed into the tailnet is authorized.
-//! - `/agent` (where `piper-agent` extensions register live sessions)
-//!   still gates on a shared secret (`PIPER_AGENT_TOKEN`), because it's
+//! - `/agent` (where `pi-piper-agent` extensions register live sessions)
+//!   still gates on a shared secret (`PI_PIPER_AGENT_TOKEN`), because it's
 //!   reached over loopback directly by a local process, never proxied
 //!   through `tailscale serve`, so there is no identity header to trust
 //!   there at all.
@@ -21,7 +21,7 @@ use axum::http::HeaderMap;
 
 /// Returns true if `presented` matches `expected_token`. Used only for
 /// `/agent`'s agent-token check; a plain equality check is sufficient
-/// because that token never crosses a network Piper doesn't already
+/// because that token never crosses a network Pi Piper doesn't already
 /// trust.
 pub fn is_authorized(expected_token: &str, presented: Option<&str>) -> bool {
     presented.is_some_and(|token| token == expected_token)
@@ -35,9 +35,9 @@ const TAILSCALE_LOGIN_HEADER: &str = "tailscale-user-login";
 /// Header `tailscaled` sets (to any value) on requests that arrived via
 /// `tailscale funnel` (public internet) rather than tailnet-only
 /// `serve`.
-/// Piper's threat model assumes funnel is never used in front of it (see
+/// Pi Piper's threat model assumes funnel is never used in front of it (see
 /// `README.md`); this is a belt-and-suspenders reject in case it is
-/// anyway, so a funnel-exposed Piper can't be walked in via a forged or
+/// anyway, so a funnel-exposed Pi Piper can't be walked in via a forged or
 /// coincidentally-valid login.
 const TAILSCALE_FUNNEL_HEADER: &str = "tailscale-funnel-request";
 
@@ -46,14 +46,14 @@ const TAILSCALE_FUNNEL_HEADER: &str = "tailscale-funnel-request";
 /// the request isn't flagged as a Funnel request.
 ///
 /// Deliberately accepts *any* tailnet login, not just an allowlisted
-/// one: Piper's access-control boundary is "reachable on the tailnet at
+/// one: Pi Piper's access-control boundary is "reachable on the tailnet at
 /// all" (enforced by `tailscale serve` + Tailscale ACLs), not which
 /// specific login made the request.
 ///
 /// **Caveat**: this trusts the header at face value.
-/// It is only meaningful because Piper binds to loopback only and is
+/// It is only meaningful because Pi Piper binds to loopback only and is
 /// meant to be reached exclusively through `tailscale serve`'s proxy —
-/// but Piper cannot cryptographically distinguish a connection actually
+/// but Pi Piper cannot cryptographically distinguish a connection actually
 /// proxied in by `tailscaled` from any other local process on the same
 /// machine that opens a loopback connection and sets this header itself.
 /// Every local user on the Hub's machine must already be trusted with

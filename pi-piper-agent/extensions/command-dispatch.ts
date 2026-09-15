@@ -5,7 +5,7 @@
 // extension-API mapping this file implements is inline below.
 //
 // Commands marked unsupported() below have no confirmed extension-API
-// equivalent as of this pi version; see piper-agent/README.md "Known
+// equivalent as of this pi version; see pi-piper-agent/README.md "Known
 // gaps". They fail cleanly with a clear error rather than silently
 // no-op-ing.
 
@@ -28,7 +28,7 @@ function fail(command: string, error: string): Response {
 function unsupported(command: string): Response {
   return fail(
     command,
-    `"${command}" is not implemented yet for piper-agent (remote) sessions — see piper-agent/README.md "Known gaps"`,
+    `"${command}" is not implemented yet for pi-piper-agent (remote) sessions — see pi-piper-agent/README.md "Known gaps"`,
   );
 }
 

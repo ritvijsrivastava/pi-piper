@@ -1,4 +1,4 @@
-//! Library crate backing the `piper` binary.
+//! Library crate backing the `pi-piper` binary.
 //!
 //! Splitting the logic out into a library (with a thin binary in
 //! `main.rs`) lets integration tests in `tests/` exercise the process and

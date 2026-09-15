@@ -1,6 +1,6 @@
 //! End-to-end test of the `/agent` <-> `/ws` <-> `/ws/control` <->
-//! `/api/sessions` machinery introduced for `piper-agent`. Does not
-//! spawn a real `pi` process or use a real `piper-agent`
+//! `/api/sessions` machinery introduced for `pi-piper-agent`. Does not
+//! spawn a real `pi` process or use a real `pi-piper-agent`
 //! extension: a plain WebSocket client stands in for the extension,
 //! since the wire protocol on `/agent` is deliberately small and
 //! transport-only (see `ARCHITECTURE.md`).
@@ -16,9 +16,9 @@ use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::Message;
 
-use piper::registry::SessionRegistry;
-use piper::server;
-use piper::state::AppState;
+use pi_piper::registry::SessionRegistry;
+use pi_piper::server;
+use pi_piper::state::AppState;
 
 const AGENT_TOKEN: &str = "agent-token";
 
@@ -93,7 +93,7 @@ async fn register_appears_in_sessions_api_and_control_snapshot() {
             json!({
                 "type": "register",
                 "sessionId": "sess-1",
-                "cwd": "/home/user/Code/piper",
+                "cwd": "/home/user/Code/pi-piper",
                 "sessionName": "Refactor auth module",
             })
             .to_string()
@@ -108,7 +108,7 @@ async fn register_appears_in_sessions_api_and_control_snapshot() {
 
     // HTTP snapshot sees it.
     let client = fetch_session(&addr, "sess-1").await;
-    assert_eq!(client["cwd"], "/home/user/Code/piper");
+    assert_eq!(client["cwd"], "/home/user/Code/pi-piper");
     assert_eq!(client["sessionName"], "Refactor auth module");
     assert_eq!(client["connected"], true);
 

@@ -1,0 +1,114 @@
+# Tag-driven release: `git tag vX.Y.Z && git push --tags` does everything.
+#
+# 1. verify the tag agrees with the crate/package versions
+# 2. build static musl binaries (x86_64 + aarch64) — each tarball is
+#    self-contained: the PWA is embedded in the binary via rust-embed
+# 3. attach tarballs + sha256 to the GitHub Release (this is also what makes
+#    `cargo binstall pi-piper` and scripts/install.sh work — no compilation)
+# 4. publish the crate to crates.io as `pi-piper`
+#
+# Required secret: CARGO_REGISTRY_TOKEN (crates.io, "publish-update" scope).
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: package versions agree
+        run: ./scripts/check-versions.sh
+
+      - name: tag matches Cargo.toml version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          cargo_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+          if [ "$tag" != "$cargo_version" ]; then
+            echo "tag v$tag does not match Cargo.toml version $cargo_version" >&2
+            exit 1
+          fi
+          echo "releasing $cargo_version"
+
+  build:
+    needs: verify
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-musl, aarch64-unknown-linux-musl]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: build (static musl)
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: package tarball + checksum
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/pi-piper" \
+             "dist/pi-piper-${{ matrix.target }}"
+          tar -czf "pi-piper-${{ matrix.target }}.tar.gz" \
+              -C dist "pi-piper-${{ matrix.target }}"
+          sha256sum "pi-piper-${{ matrix.target }}.tar.gz" \
+              > "pi-piper-${{ matrix.target }}.tar.gz.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pi-piper-${{ matrix.target }}
+          path: |
+            pi-piper-${{ matrix.target }}.tar.gz
+            pi-piper-${{ matrix.target }}.tar.gz.sha256
+          if-no-files-found: error
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pi-piper-*.tar.gz
+            pi-piper-*.tar.gz.sha256
+          generate_release_notes: true
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

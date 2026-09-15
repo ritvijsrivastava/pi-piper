@@ -1,5 +1,5 @@
 /*
- * Piper — NOC/SRE status-wall world.
+ * Pi Piper — NOC/SRE status-wall world.
  *
  * Dense, semantic, legible in under a second: session state is read from
  * color AND shape (never color alone), one interactive accent is reserved
@@ -806,7 +806,7 @@ button:disabled {
   line-height: 1.5;
 }
 
-/* Syntax emphasis stays within the Piper neutral palette: color remains
+/* Syntax emphasis stays within the Pi Piper neutral palette: color remains
    reserved for interactive and session-status meaning. */
 .code-token-keyword {
   font-weight: 700;

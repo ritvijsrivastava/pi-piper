@@ -1,4 +1,4 @@
-// Piper mobile client.
+// Pi Piper mobile client.
 //
 // Deliberately framework-free: this is a small enough UI that a build
 // step would add more complexity than it removes (KISS/YAGNI).
@@ -9,7 +9,7 @@
 //                        /ws/control
 //   #/session/<id>    - chat view for one session, speaking pi's RPC
 //                        protocol directly over /ws?session=<id> -
-//                        Piper's server only relays
+//                        Pi Piper's server only relays
 //                        JSON, it does not define a separate wire format.
 //
 // At desktop widths (see style.css `#app-shell`) the session list also
@@ -17,10 +17,10 @@
 // `isDesktop()` below is the one place that decides which layout is live.
 
 (() => {
-  const LAST_SESSION_KEY = "piper.lastSession";
+  const LAST_SESSION_KEY = "pi-piper.lastSession";
   const ICON_SPRITE = "/icons/sprite.svg";
-  const markdownRenderer = window.PiperMarkdown;
-  const attachmentTools = window.PiperAttachments;
+  const markdownRenderer = window.piPiperMarkdown;
+  const attachmentTools = window.piPiperAttachments;
 
   // ---- Shared elements --------------------------------------------------
 
@@ -747,7 +747,7 @@
           break;
         default:
           // queue_update and a handful of retry/error events are not
-          // surfaced in this client yet; see piper-agent/README.md "Known
+          // surfaced in this client yet; see pi-piper-agent/README.md "Known
           // gaps".
           break;
       }

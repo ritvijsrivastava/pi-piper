@@ -28,7 +28,7 @@ export function rememberCommandCtx(ctx: ExtensionCommandContext): void {
 
 export function getCtx(): ExtensionContext {
   if (!latestCtx) {
-    throw new Error("piper-agent: no extension context observed yet in this session");
+    throw new Error("pi-piper-agent: no extension context observed yet in this session");
   }
   return latestCtx;
 }
@@ -39,7 +39,7 @@ export function getCtx(): ExtensionContext {
 export function getCommandCtx(): ExtensionCommandContext {
   if (!latestCommandCtx) {
     throw new Error(
-      "piper-agent: this command needs a command-context snapshot that isn't available yet; run /rc again in this terminal",
+      "pi-piper-agent: this command needs a command-context snapshot that isn't available yet; run /rc again in this terminal",
     );
   }
   return latestCommandCtx;

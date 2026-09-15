@@ -5,7 +5,7 @@
 //! `docs/rpc.md`). This module provides small helpers for that framing
 //! without re-implementing anything `tokio::io::AsyncBufReadExt` already
 //! gets right: it splits on `\n` only and strips a trailing `\r`, which
-//! matches the RPC framing rules exactly. Piper relays the same JSON
+//! matches the RPC framing rules exactly. Pi Piper relays the same JSON
 //! protocol to the browser, so no separate wire format needs to be
 //! designed or kept in sync.
 

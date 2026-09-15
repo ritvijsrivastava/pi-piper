@@ -1,4 +1,4 @@
-//! Piper: a multi-session remote control hub for `pi` coding-agent
+//! Pi Piper: a multi-session remote control hub for `pi` coding-agent
 //! sessions, so they can be controlled remotely (e.g. from a phone
 //! browser) over a private Tailscale network.
 //!
@@ -11,13 +11,13 @@ use clap::Parser;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
-use piper::agent_token;
-use piper::config::Config;
-use piper::registry::SessionRegistry;
-use piper::rpc::process::PiProcess;
-use piper::server;
-use piper::session::{now_ms, AgentLink, SessionKind, SessionMeta};
-use piper::state::AppState;
+use pi_piper::agent_token;
+use pi_piper::config::Config;
+use pi_piper::registry::SessionRegistry;
+use pi_piper::rpc::process::PiProcess;
+use pi_piper::server;
+use pi_piper::session::{now_ms, AgentLink, SessionKind, SessionMeta};
+use pi_piper::state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
 
     let registry = Arc::new(SessionRegistry::new());
 
-    // Optional headless (v1-compatible) session: Piper spawns `pi
+    // Optional headless (v1-compatible) session: Pi Piper spawns `pi
     // --mode rpc` itself for a project with no terminal open. Kept
     // alive here so we can shut it down cleanly on
     // Ctrl+C; its own lifecycle otherwise just unregisters itself from
@@ -79,7 +79,7 @@ async fn main() -> Result<()> {
     let state = AppState::new(registry, agent_token);
 
     let listener = TcpListener::bind(config.bind).await?;
-    tracing::info!(addr = %config.bind, "piper listening");
+    tracing::info!(addr = %config.bind, "pi-piper listening");
 
     let app = server::router(state);
 

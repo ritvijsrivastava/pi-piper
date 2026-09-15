@@ -1,14 +1,14 @@
 # Architecture
 
-This is a code-oriented tour of how Piper works — including the wire
+This is a code-oriented tour of how Pi Piper works — including the wire
 protocol, authorization model, and the places where the implementation
 deliberately diverged from the original design. For the PWA's visual
 design system, see [`DESIGN.md`](DESIGN.md).
 
 ## The one-paragraph version
 
-Piper is a relay. A `pi` coding-agent session and a phone browser are
-two clients of the same live session; Piper sits between them and
+Pi Piper is a relay. A `pi` coding-agent session and a phone browser are
+two clients of the same live session; Pi Piper sits between them and
 forwards pi's own RPC protocol (JSON lines over WebSocket, see pi's
 `docs/rpc.md`) almost verbatim in both directions, plus a small
 transport-only envelope for multi-session routing. It invents no
@@ -21,12 +21,12 @@ everything from a single Rust binary over a private Tailscale network.
 Desktop terminal (any project)         Desktop terminal (another project)
 ┌─────────────────────────────┐        ┌─────────────────────────────┐
 │ pi (interactive TUI)         │        │ pi (interactive TUI)         │
-│ + piper-agent extension      │        │ + piper-agent extension      │
+│ + pi-piper-agent extension      │        │ + pi-piper-agent extension      │
 │ /rc  ── connects out ────────┼──┐     │ /rc  ── connects out ────────┼──┐
 └─────────────────────────────┘  │     └─────────────────────────────┘  │
                                   ▼                                     ▼
                      ┌──────────────────────────────────────────────────┐
-                     │                Piper Hub (this repo, Rust)        │
+                     │                Pi Piper Hub (this repo, Rust)        │
                      │  SessionRegistry keyed by session id              │
                      │  /agent  /ws  /ws/control  /api/sessions          │
                      │  + embedded PWA (assets/, rust-embed)             │
@@ -42,7 +42,7 @@ internet.
 
 ## Components
 
-### Piper Hub (`src/`, Rust)
+### Pi Piper Hub (`src/`, Rust)
 
 | Module | Role |
 |---|---|
@@ -51,11 +51,11 @@ internet.
 | `server/` | The axum router: `/agent`, `/ws`, `/ws/control`, `/api/sessions`, and the embedded PWA fallback. `auth.rs` holds the two authorization checks (see below). |
 | `registry.rs` | The switchboard. A `HashMap<session id, Arc<SessionHandle>>` plus a broadcast channel of registry-change events for the phone's session list. Also hosts one passive `watch_status` task per session that derives streaming/preview state by peeking at events already flowing to subscribers. |
 | `session.rs` | Session identity and the `AgentLink` abstraction (see below). |
-| `rpc/` | JSONL framing helpers and the two agent-link implementations: `process.rs` (spawned `pi --mode rpc`) and `remote_agent.rs` (a `piper-agent` WebSocket). |
-| `agent_token.rs` | Generates and persists the `/agent` shared secret on first run (`~/.pi/agent/piper/agent-token`, mode 0600). |
+| `rpc/` | JSONL framing helpers and the two agent-link implementations: `process.rs` (spawned `pi --mode rpc`) and `remote_agent.rs` (a `pi-piper-agent` WebSocket). |
+| `agent_token.rs` | Generates and persists the `/agent` shared secret on first run (`~/.pi/agent/pi-piper/agent-token`, mode 0600). |
 | `state.rs` | `AppState`: registry + agent token handed to all handlers. |
 
-### `piper-agent` (`piper-agent/`, TypeScript pi extension)
+### `pi-piper-agent` (`pi-piper-agent/`, TypeScript pi extension)
 
 Installed once into pi, available in every project. `/rc` dials out to
 the Hub's `/agent` endpoint over a WebSocket, registers the current
@@ -65,7 +65,7 @@ them to the Hub, and maps incoming RPC commands onto extension-API
 calls (`ctx.prompt`, `ctx.steer`, `ctx.abort`, session management,
 etc.). It also reconnects automatically across `/new`, `/fork`, and
 `/resume`, which tear down pi's extension runtime. See
-[`piper-agent/README.md`](piper-agent/README.md) for the exact mapping
+[`pi-piper-agent/README.md`](pi-piper-agent/README.md) for the exact mapping
 and its known gaps.
 
 ### Mobile PWA (`assets/`, embedded in the binary)
@@ -80,7 +80,7 @@ renders pi's RPC event stream and sends prompts, steering, and aborts.
 A "session" is one running `pi` process. The Hub reaches one two ways,
 behind a closed two-variant enum (`session.rs`):
 
-- **`AgentLink::Remote`** — the primary path. A `piper-agent` extension
+- **`AgentLink::Remote`** — the primary path. A `pi-piper-agent` extension
   inside an already-running interactive `pi` dialed out to `/agent`.
   The Hub never spawned anything; it's attached to a session the user
   started themselves.
@@ -122,16 +122,16 @@ can render immediately and then stay current.
 
 All WebSocket messages are single JSON objects per text frame. The
 phone-facing `/ws` connection carries pi's own RPC protocol (see pi's
-`docs/rpc.md`) byte-for-byte, unchanged — Piper defines only the two
+`docs/rpc.md`) byte-for-byte, unchanged — Pi Piper defines only the two
 thin layers around it:
 
-**Agent registration (`/agent`, Hub ↔ `piper-agent`).** Connect with
+**Agent registration (`/agent`, Hub ↔ `pi-piper-agent`).** Connect with
 `/agent?token=<agent_token>` (rejected with `401` otherwise), then:
 
 ```jsonc
 // extension → Hub, on connect:
 {"type": "register", "sessionId": "abc123", "sessionFile": ".../abc123.jsonl",
- "sessionName": "Refactor auth module", "cwd": "/home/user/Code/piper"}
+ "sessionName": "Refactor auth module", "cwd": "/home/user/Code/pi-piper"}
 // Hub → extension:
 {"type": "registered", "sessionId": "abc123"}
 // extension → Hub, on a session rename (in-place registry patch):
@@ -165,11 +165,11 @@ guessing. `GET /api/sessions` returns the same summary array as the
 control channel's snapshot, for first render and WS-less fallbacks.
 
 **Command set.** The commands the phone can send are pi's RPC
-commands, mapped by `piper-agent` onto pi's extension API (see the
-table in `piper-agent/extensions/command-dispatch.ts`). A few have no
+commands, mapped by `pi-piper-agent` onto pi's extension API (see the
+table in `pi-piper-agent/extensions/command-dispatch.ts`). A few have no
 extension-API equivalent and fail with a clear error instead — the
 authoritative list is "Known gaps" in
-[`piper-agent/README.md`](piper-agent/README.md).
+[`pi-piper-agent/README.md`](pi-piper-agent/README.md).
 
 ## Authorization model
 
@@ -185,14 +185,14 @@ in the paragraphs below):
   (`?token=…`), because it's reached directly over loopback by a local
   process that is never proxied through `tailscale serve`, so there's
   no identity header to trust. On first run the Hub generates the
-  token and persists it where `piper-agent` reads it automatically.
+  token and persists it where `pi-piper-agent` reads it automatically.
 
 The honest caveat, documented in the code too: the Hub cannot
 cryptographically distinguish a real `tailscale serve` proxy from any
 other local process setting the same header. The security boundary is
 the tailnet (plus trusting the Hub machine's local users), not this
 header — which is also why none of this is a substitute for Tailscale
-ACLs, and why `tailscale funnel` must never sit in front of Piper
+ACLs, and why `tailscale funnel` must never sit in front of Pi Piper
 (funnel-flagged requests are rejected outright regardless of login).
 
 ## Implementation notes
@@ -206,23 +206,23 @@ doc, kept here so the code's shape doesn't look unmotivated:
 - `session_info_changed` (renames) patches the registry entry in place
   via `meta_update`; full session replacement (`/new`, `/fork`,
   `/resume`) tears down pi's extension runtime entirely, so
-  `piper-agent` instead reconnects from inside the replacement — and
+  `pi-piper-agent` instead reconnects from inside the replacement — and
   records a handoff on disk so the reconnect survives a pi restart.
 - pi's extension-level events differ from RPC-mode wire events in a
   few places (`message_update` carries a cumulative `message` instead
   of `usage`; compaction events have different names/shapes).
-  `piper-agent` reshapes them so the PWA can be written against the
+  `pi-piper-agent` reshapes them so the PWA can be written against the
   documented RPC shape unmodified.
 - `get_session_stats`/`get_messages` only cover the active branch of a
   session, and a few RPC commands have no extension-API equivalent at
-  all — see "Known gaps" in `piper-agent/README.md` for the full list.
+  all — see "Known gaps" in `pi-piper-agent/README.md` for the full list.
 
 ## Repository layout
 
 ```
 src/                 Rust Hub (see table above)
 assets/              Mobile PWA, embedded in the binary
-piper-agent/         TypeScript pi extension (pi package: adds /rc)
+pi-piper-agent/         TypeScript pi extension (pi package: adds /rc)
 tests/               Integration tests (drive the real router + a real pi process)
 deploy/              systemd unit + environment file example
 DESIGN.md            PWA design tokens (used with the impeccable design system)
@@ -235,7 +235,7 @@ PRODUCT.md           Product framing
 integration suites in `tests/` that drive the real axum router.
 `tests/agent_bridge.rs` exercises the `/agent` ↔ `/ws` ↔ `/ws/control`
 ↔ `/api/sessions` machinery with a plain WebSocket client standing in
-for `piper-agent` (the wire protocol is small and transport-only, so
+for `pi-piper-agent` (the wire protocol is small and transport-only, so
 that's enough). `tests/websocket_bridge.rs` spawns a real
 `pi --mode rpc` process for the headless-link path. Neither suite
 calls the configured LLM, so everything runs without network access or

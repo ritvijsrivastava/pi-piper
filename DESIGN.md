@@ -1,5 +1,5 @@
 ---
-name: Piper
+name: Pi Piper
 description: A status wall for your own live pi sessions, shrunk to the phone.
 colors:
   bg: "#0a0d12"
@@ -83,13 +83,13 @@ components:
     padding: "0.62rem 1rem"
 ---
 
-# Design System: Piper
+# Design System: Pi Piper
 
 ## Overview
 
 **Creative North Star: "The Operator's Status Wall"**
 
-Piper reads like an SRE's dashboard shrunk onto a phone: dense, semantic, and legible in under a second, never a rounded-bubble chat-app costume. Every session is a row on a status wall, not a conversation thread in a list — color and shape together say what's happening before anyone reads a word, and one interactive accent is spent only on things you can actually press. The world is quiet by default (near-black ground, hairline dividers, a restrained neutral+accent strategy appropriate to an Operate surface) and earns its color exclusively through meaning: status green/amber/red/slate never appear as decoration, only as fact.
+Pi Piper reads like an SRE's dashboard shrunk onto a phone: dense, semantic, and legible in under a second, never a rounded-bubble chat-app costume. Every session is a row on a status wall, not a conversation thread in a list — color and shape together say what's happening before anyone reads a word, and one interactive accent is spent only on things you can actually press. The world is quiet by default (near-black ground, hairline dividers, a restrained neutral+accent strategy appropriate to an Operate surface) and earns its color exclusively through meaning: status green/amber/red/slate never appear as decoration, only as fact.
 
 This is a self-hosted, single-operator tool glanced at mid-task — at a standup, on a train, from bed — so density and speed of comprehension outrank warmth or personality. Brand lives in small, precise details (the P mark, the monospace data voice, the four distinct status shapes) rather than in an expressive surface. Rejected explicitly during the direction round: a generic AI-chat-bubble skin (the category default for this kind of tool) and literal retro-instrument skeuomorphism (dials, meters, phosphor-glow costume) — the chosen world takes the *legibility discipline* of an instrument bench without the hardware cosplay.
 

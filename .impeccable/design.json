@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-09-11T05:30:00Z",
-  "title": "Design System: Piper",
+  "title": "Design System: Pi Piper",
   "extensions": {
     "colorMeta": {
       "bg": { "role": "neutral", "displayName": "Void", "canonical": "#0a0d12" },
@@ -59,7 +59,7 @@
       "kind": "card",
       "refersTo": "session-item",
       "description": "Flat, hairline-divided list row \u2014 the session list's only unit.",
-      "html": "<button class=\"ds-session-item\" type=\"button\"><span class=\"ds-dot ds-dot-streaming\"></span><span class=\"ds-session-body\"><span class=\"ds-session-title\">Refactor auth module</span><span class=\"ds-session-subtitle\">~/Code/piper &middot; 2s ago</span></span></button>",
+      "html": "<button class=\"ds-session-item\" type=\"button\"><span class=\"ds-dot ds-dot-streaming\"></span><span class=\"ds-session-body\"><span class=\"ds-session-title\">Refactor auth module</span><span class=\"ds-session-subtitle\">~/Code/pi-piper &middot; 2s ago</span></span></button>",
       "css": ".ds-session-item { display: flex; align-items: flex-start; gap: 0.7rem; width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; border-bottom: 1px solid #1c212b; color: #e6e9ef; cursor: pointer; font-family: 'Inter Variable', sans-serif; } .ds-session-item:hover { background: #12161d; } .ds-session-body { display: flex; flex-direction: column; gap: 0.18rem; min-width: 0; } .ds-session-title { font-weight: 600; font-size: 0.95rem; } .ds-session-subtitle { font-family: 'JetBrains Mono Variable', monospace; font-size: 0.76rem; color: #8b95a5; }"
     },
     {
@@ -73,7 +73,7 @@
   ],
   "narrative": {
     "northStar": "The Operator's Status Wall",
-    "overview": "Piper reads like an SRE's dashboard shrunk onto a phone: dense, semantic, and legible in under a second, never a rounded-bubble chat-app costume. Every session is a row on a status wall, not a conversation thread in a list \u2014 color and shape together say what's happening before anyone reads a word, and one interactive accent is spent only on things you can actually press. This is a self-hosted, single-operator tool glanced at mid-task, so density and speed of comprehension outrank warmth or personality; brand lives in small, precise details rather than in an expressive surface.",
+    "overview": "Pi Piper reads like an SRE's dashboard shrunk onto a phone: dense, semantic, and legible in under a second, never a rounded-bubble chat-app costume. Every session is a row on a status wall, not a conversation thread in a list \u2014 color and shape together say what's happening before anyone reads a word, and one interactive accent is spent only on things you can actually press. This is a self-hosted, single-operator tool glanced at mid-task, so density and speed of comprehension outrank warmth or personality; brand lives in small, precise details rather than in an expressive surface.",
     "keyCharacteristics": [
       "Status is read by shape and color, never color alone.",
       "One accent color, reserved strictly for actionable meaning.",

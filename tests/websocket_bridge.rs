@@ -17,12 +17,12 @@ use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::Message;
 
-use piper::config::Config;
-use piper::registry::SessionRegistry;
-use piper::rpc::process::PiProcess;
-use piper::server;
-use piper::session::{now_ms, AgentLink, SessionKind, SessionMeta};
-use piper::state::AppState;
+use pi_piper::config::Config;
+use pi_piper::registry::SessionRegistry;
+use pi_piper::rpc::process::PiProcess;
+use pi_piper::server;
+use pi_piper::session::{now_ms, AgentLink, SessionKind, SessionMeta};
+use pi_piper::state::AppState;
 
 /// Builds a WebSocket upgrade request that looks like it was proxied in
 /// by `tailscale serve` for tailnet user `test-user@github` — the only

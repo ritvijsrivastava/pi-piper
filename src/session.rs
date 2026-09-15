@@ -2,7 +2,7 @@
 //!
 //! A "session" is one running `pi` process,
 //! reached either by spawning it ourselves (`AgentLink::Headless`, the
-//! Piper v1 behavior) or by a `piper-agent` extension inside an
+//! Pi Piper v1 behavior) or by a `pi-piper-agent` extension inside an
 //! already-running interactive `pi` dialing in over `/agent`
 //! (`AgentLink::Remote`, new in v2). Both are driven identically by
 //! everything above this module: subscribe for events, send for
@@ -33,9 +33,9 @@ pub fn now_ms() -> i64 {
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum SessionKind {
-    /// `piper-agent` extension inside an interactive `pi` dialed in.
+    /// `pi-piper-agent` extension inside an interactive `pi` dialed in.
     Remote,
-    /// Piper itself spawned `pi --mode rpc` (v1 behavior, kept as a
+    /// Pi Piper itself spawned `pi --mode rpc` (v1 behavior, kept as a
     /// fallback for projects with no terminal open).
     Headless,
 }

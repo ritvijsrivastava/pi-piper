@@ -2,7 +2,7 @@
 //!
 //! Design note: this module deliberately does *not* implement crash
 //! restart/backoff logic. If the child process exits, [`PiProcess::wait`]
-//! returns and the caller treats that as fatal, exiting the whole Piper
+//! returns and the caller treats that as fatal, exiting the whole Pi Piper
 //! process with a non-zero status. The systemd unit (see `deploy/`) is
 //! configured with `Restart=on-failure`, so the operating system's own,
 //! well-tested process supervisor handles restarts instead of a
@@ -117,7 +117,7 @@ impl PiProcess {
 
     /// Waits for the child process to exit. Callers should treat any
     /// return from this (success or failure) as fatal for the current
-    /// Piper process; see the module-level docs for why restarts are left
+    /// Pi Piper process; see the module-level docs for why restarts are left
     /// to systemd. Safe to call from multiple tasks: once the child has
     /// exited, every caller observes the same cached exit status.
     pub async fn wait(&self) -> Result<std::process::ExitStatus> {

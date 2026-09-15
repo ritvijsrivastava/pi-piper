@@ -81,7 +81,7 @@
     return `Attached file: ${attachment.name}\n\n${fence}${attachment.language}\n${attachment.text}\n${fence}`;
   }
 
-  window.PiperAttachments = Object.freeze({
+  window.piPiperAttachments = Object.freeze({
     MAX_FILE_BYTES,
     MAX_TOTAL_BYTES,
     buildTextBlock,

@@ -1,7 +1,7 @@
-// piper-agent: adds `/rc` to connect the current interactive `pi`
-// session to a piper Hub for remote control from your phone. See
-// ARCHITECTURE.md (in the piper repo) for the architecture and
-// piper-agent/README.md for setup and known limitations.
+// pi-piper-agent: adds `/rc` to connect the current interactive `pi`
+// session to a pi-piper Hub for remote control from your phone. See
+// ARCHITECTURE.md (in the pi-piper repo) for the architecture and
+// pi-piper-agent/README.md for setup and known limitations.
 
 import type {
   ExtensionAPI,
@@ -14,7 +14,7 @@ import { dropHandoff, hasHandoff, markHandoff } from "./handoff.ts";
 import { registerEventForwarding } from "./event-bridge.ts";
 import { HubClient } from "./hub-client.ts";
 
-const RC_STATUS_ID = "piper-rc";
+const RC_STATUS_ID = "pi-piper-rc";
 
 export default function (pi: ExtensionAPI) {
   let client: HubClient | undefined;
@@ -85,14 +85,14 @@ export default function (pi: ExtensionAPI) {
         if (generation !== clientGeneration) return;
         if (status === "connected") {
           ctx.ui.setStatus(RC_STATUS_ID, ctx.ui.theme.fg("success", "RC: connected"));
-          ctx.ui.notify("piper: connected.", "info");
+          ctx.ui.notify("pi-piper: connected.", "info");
         } else if (status === "error") {
           ctx.ui.setStatus(RC_STATUS_ID, ctx.ui.theme.fg("error", "RC: error"));
-          if (lastNotified !== "error") ctx.ui.notify(`piper: ${detail}`, "warning");
+          if (lastNotified !== "error") ctx.ui.notify(`pi-piper: ${detail}`, "warning");
         } else if (status === "disconnected") {
           ctx.ui.setStatus(RC_STATUS_ID, ctx.ui.theme.fg("warning", "RC: reconnecting"));
           if (lastNotified === "connected") {
-            ctx.ui.notify("piper: disconnected from the Hub \u2013 retrying\u2026", "warning");
+            ctx.ui.notify("pi-piper: disconnected from the Hub \u2013 retrying\u2026", "warning");
           }
         } else if (status === "connecting") {
           ctx.ui.setStatus(RC_STATUS_ID, ctx.ui.theme.fg("warning", "RC: connecting"));
@@ -130,10 +130,10 @@ export default function (pi: ExtensionAPI) {
     dropHandoff(previous);
     try {
       start(ctx);
-      ctx.ui.notify("piper: RC followed the session change — reconnecting…", "info");
+      ctx.ui.notify("pi-piper: RC followed the session change — reconnecting…", "info");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      ctx.ui.notify(`piper: failed to reconnect after session change: ${message}`, "error");
+      ctx.ui.notify(`pi-piper: failed to reconnect after session change: ${message}`, "error");
     }
   });
 
@@ -158,31 +158,31 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerCommand("rc", {
-    description: "Connect this session to a piper Hub for remote control from your phone",
+    description: "Connect this session to a pi-piper Hub for remote control from your phone",
     handler: async (args, ctx) => {
       const sub = args.trim();
       if (sub === "stop") {
         stop(ctx, { clearHandoff: true });
-        ctx.ui.notify("piper: disconnected", "info");
+        ctx.ui.notify("pi-piper: disconnected", "info");
         return;
       }
       if (sub === "status") {
         if (!client) {
-          ctx.ui.notify("piper: not connected", "info");
+          ctx.ui.notify("pi-piper: not connected", "info");
           return;
         }
         const { status, detail } = client.getStatus();
-        const message = detail ? `piper: ${status} (${detail})` : `piper: ${status}`;
+        const message = detail ? `pi-piper: ${status} (${detail})` : `pi-piper: ${status}`;
         ctx.ui.notify(message, status === "error" ? "warning" : "info");
         return;
       }
       try {
         start(ctx);
-        ctx.ui.notify("piper: connecting to the Hub…", "info");
+        ctx.ui.notify("pi-piper: connecting to the Hub…", "info");
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        ctx.ui.notify(`piper: failed to start: ${message}`, "error");
-        console.error("piper-agent /rc failed:", err);
+        ctx.ui.notify(`pi-piper: failed to start: ${message}`, "error");
+        console.error("pi-piper-agent /rc failed:", err);
       }
     },
     getArgumentCompletions: (prefix) => {

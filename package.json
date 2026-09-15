@@ -1,11 +1,11 @@
 {
-  "name": "piper",
+  "name": "pi-piper",
   "version": "0.1.0",
-  "description": "Remote control for live pi coding-agent sessions from your phone over a private Tailscale network. Rust Hub + the piper-agent pi extension (adds /rc) + a mobile PWA.",
+  "description": "Remote control for live pi coding-agent sessions from your phone over a private Tailscale network. Rust Hub + the pi-piper-agent pi extension (adds /rc) + a mobile PWA.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ritvijsrivastava/piper.git"
+    "url": "git+https://github.com/ritvijsrivastava/pi-piper.git"
   },
   "keywords": [
     "pi-package",
@@ -16,7 +16,7 @@
     "pwa"
   ],
   "pi": {
-    "extensions": ["./piper-agent/extensions/index.ts"]
+    "extensions": ["./pi-piper-agent/extensions/index.ts"]
   },
   "dependencies": {
     "ws": "^8.18.0"

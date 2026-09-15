@@ -1,29 +1,29 @@
-# piper-agent
+# pi-piper-agent
 
 A pi extension that adds `/rc` to connect your **current interactive
-`pi` session** to a [piper](../README.md) Hub, so it can be controlled
+`pi` session** to a [pi-piper](../README.md) Hub, so it can be controlled
 remotely (e.g. from your phone) while you keep using the real terminal
 UI normally. See [`ARCHITECTURE.md`](../ARCHITECTURE.md) for the
 architecture —
 this file covers setup and the practical details/limitations of this
 extension specifically.
 
-Unlike piper v1 (which spawned a second, separate `pi --mode rpc`
+Unlike pi-piper v1 (which spawned a second, separate `pi --mode rpc`
 process), this extension makes your terminal session itself the thing
 being controlled: the phone and the terminal are two clients of the
 same live session.
 
 ## Setup
 
-1. Make sure a piper Hub is running somewhere reachable from this
+1. Make sure a pi-piper Hub is running somewhere reachable from this
    machine (usually on the same desktop — see the main
    [`README.md`](../README.md)). The Hub generates an agent-token file
-   on first run at `~/.pi/agent/piper/agent-token`.
+   on first run at `~/.pi/agent/pi-piper/agent-token`.
 2. Install this extension globally so it's available in every project:
    ```bash
-   pi install git:github.com/ritvijsrivastava/piper   # this repo, as a pi package
+   pi install git:github.com/ritvijsrivastava/pi-piper   # this repo, as a pi package
    # or, from a local checkout:
-   pi install /absolute/path/to/piper/piper-agent
+   pi install /absolute/path/to/pi-piper/pi-piper-agent
    ```
    `npm install` runs automatically as part of `pi install`, resolving
    the `ws` dependency.
@@ -39,9 +39,9 @@ same live session.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PIPER_HUB_URL` | `ws://127.0.0.1:4390/agent` | Where the Hub's `/agent` endpoint is. Override if the Hub runs on another host. |
-| `PIPER_AGENT_TOKEN` | *(reads from file)* | The agent token. Normally left unset so it's read from disk instead. |
-| `PIPER_AGENT_TOKEN_PATH` | `~/.pi/agent/piper/agent-token` | Where to read the agent token from, if `PIPER_AGENT_TOKEN` isn't set. |
+| `PI_PIPER_HUB_URL` | `ws://127.0.0.1:4390/agent` | Where the Hub's `/agent` endpoint is. Override if the Hub runs on another host. |
+| `PI_PIPER_AGENT_TOKEN` | *(reads from file)* | The agent token. Normally left unset so it's read from disk instead. |
+| `PI_PIPER_AGENT_TOKEN_PATH` | `~/.pi/agent/pi-piper/agent-token` | Where to read the agent token from, if `PI_PIPER_AGENT_TOKEN` isn't set. |
 
 You should not normally need to set any of these on a single-desktop
 setup — the defaults match the Hub's own defaults exactly.
@@ -65,7 +65,7 @@ works both ways:
   terminal, or `/reload`): pi's built-in command tears the extension
   runtime down with no chance to run code in the replacement, so the
   outgoing session instead records a small handoff entry on disk
-  (`~/.pi/agent/piper/rc-handoff.json`) and the replacement instance's
+  (`~/.pi/agent/pi-piper/rc-handoff.json`) and the replacement instance's
   `session_start` hook picks it up and reconnects. The entry is
   only removed by `/rc stop` or quitting pi, so RC also follows a
   session across a pi restart + `/resume` of the same session file.
@@ -90,14 +90,14 @@ of silently no-op-ing:
   that), and can't be cancelled (`abort_bash` is unsupported).
 - `queue_update` is never forwarded as an event: there is no
   `pi.on("queue_update", ...)` hook for extensions. The phone won't see
-  a "queued messages" indicator for a `piper-agent`-linked session.
+  a "queued messages" indicator for a `pi-piper-agent`-linked session.
 - `extension_ui_request`/`extension_ui_response` (the dialogs *other*
   extensions in your project raise via `ctx.ui.select/confirm/input`)
   are **not** proxied to the phone. There is no extension-level hook to
   intercept another extension's `ctx.ui` call; it's answered locally at
   the terminal exactly as it would be without this extension installed.
   If nobody is at the terminal and a dialog has no `timeout`, it will
-  stall waiting for input the phone never sends — same caveat as piper
+  stall waiting for input the phone never sends — same caveat as pi-piper
   v1's own README.
 - `auto_retry_start`/`auto_retry_end`,
   `summarization_retry_scheduled`/`_attempt_start`/`_finished`, and
@@ -125,7 +125,7 @@ around less commonly used RPC commands.
 ## Development
 
 ```bash
-cd piper-agent
+cd pi-piper-agent
 npm install
 npx tsc --noEmit    # type-check against the real @earendil-works/pi-coding-agent types
 ```

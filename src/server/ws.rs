@@ -3,9 +3,9 @@
 //!
 //! Messages are relayed as opaque JSON in both directions: the browser
 //! speaks pi's own RPC protocol directly (see pi's `docs/rpc.md`), so
-//! Piper does not define or maintain a second protocol. Piper only
+//! Pi Piper does not define or maintain a second protocol. Pi Piper only
 //! validates that a message is well-formed JSON before forwarding it.
-//! Unchanged from Piper v1 other than session selection.
+//! Unchanged from Pi Piper v1 other than session selection.
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
@@ -64,7 +64,7 @@ pub async fn handler(
 
 /// Relays session events to the socket and socket messages to the
 /// session, concurrently, until either side disconnects or the session
-/// itself disconnects (e.g. the terminal running `piper-agent` closed).
+/// itself disconnects (e.g. the terminal running `pi-piper-agent` closed).
 async fn bridge(socket: WebSocket, handle: Arc<SessionHandle>) {
     let (mut to_client, mut from_client) = socket.split();
     let mut events = handle.link.subscribe();

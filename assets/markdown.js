@@ -1,4 +1,4 @@
-// Piper's small, dependency-free Markdown renderer.
+// Pi Piper's small, dependency-free Markdown renderer.
 //
 // The mobile client receives assistant content from a live session, so raw
 // HTML is always escaped and links are restricted to safe URL schemes before
@@ -234,5 +234,5 @@
     return blocks.join("");
   }
 
-  window.PiperMarkdown = { renderMarkdown };
+  window.piPiperMarkdown = { renderMarkdown };
 })();

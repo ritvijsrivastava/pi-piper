@@ -3,7 +3,7 @@
 // Most extension events already match `docs/rpc.md`'s
 // documented event shapes closely; a few are remapped or reshaped here
 // where the interactive-mode extension event differs from the
-// documented RPC wire event. See piper-agent/README.md "Known gaps" for
+// documented RPC wire event. See pi-piper-agent/README.md "Known gaps" for
 // event types that cannot be forwarded at all (no extension hook
 // exists): `queue_update`, `extension_ui_request`/`_response`,
 // `auto_retry_*`, `summarization_retry_*`, `extension_error`.

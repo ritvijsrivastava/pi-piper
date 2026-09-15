@@ -87,7 +87,7 @@ impl SessionRegistry {
     }
 
     /// Applies a `meta_update` patch (see `ARCHITECTURE.md`) for a
-    /// `session_info_changed` event forwarded by `piper-agent`.
+    /// `session_info_changed` event forwarded by `pi-piper-agent`.
     pub fn update_meta(&self, id: &str, patch: &Value) {
         let sessions = self.sessions.read().unwrap();
         let Some(handle) = sessions.get(id) else {
@@ -128,7 +128,7 @@ impl SessionRegistry {
 
     /// Returns the sole registered session, if exactly one is
     /// registered. Used by `/ws` when the phone omits `?session=`, to
-    /// keep the single-session case as simple as Piper v1.
+    /// keep the single-session case as simple as Pi Piper v1.
     pub fn get_default(&self) -> Option<Arc<SessionHandle>> {
         let sessions = self.sessions.read().unwrap();
         if sessions.len() == 1 {

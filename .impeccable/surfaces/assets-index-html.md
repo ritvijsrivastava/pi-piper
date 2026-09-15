@@ -11,11 +11,11 @@ Full PWA redesign: session list, chat view, composer, settings panel. Mode: **Op
 
 ## Audience, job, constraints
 
-Developers who self-host their own Piper Hub on their own private Tailscale network, glancing at a phone mid-task to check on or steer an already-running `pi` session. Must stay fast, legible at a glance, low-noise, trustworthy for a security-sensitive remote-access tool. No framework/build step — static HTML/CSS/JS embedded via `rust-embed`; self-hosted static font files are allowed (still no bundler). Preserve all existing functionality, RPC/WebSocket wiring, and accessibility baseline (`aria-live` regions, semantic HTML).
+Developers who self-host their own Pi Piper Hub on their own private Tailscale network, glancing at a phone mid-task to check on or steer an already-running `pi` session. Must stay fast, legible at a glance, low-noise, trustworthy for a security-sensitive remote-access tool. No framework/build step — static HTML/CSS/JS embedded via `rust-embed`; self-hosted static font files are allowed (still no bundler). Preserve all existing functionality, RPC/WebSocket wiring, and accessibility baseline (`aria-live` regions, semantic HTML).
 
 ## Direction contract
 
-**THESIS:** Piper's session list and chat view become an SRE/NOC status wall shrunk to the phone — dense, semantic, legible in under a second — refusing the generic rounded-bubble AI-chat-app default this category always ships.
+**THESIS:** Pi Piper's session list and chat view become an SRE/NOC status wall shrunk to the phone — dense, semantic, legible in under a second — refusing the generic rounded-bubble AI-chat-app default this category always ships.
 
 **OWN-WORLD:** near-black ground `#0a0d12`, raised surface `#12161d`, hairline border `#232a35`, primary text `#e6e9ef`, muted text `#8b95a5`. Status owns meaning and nothing else: green `#34d399` streaming, amber `#f5b84c` connecting/warning, slate `#8b95a5` idle, red `#f2646b` disconnected — kept strictly separate from one cool interactive accent, blue `#5b9df5`, reserved for links, primary actions, and focus rings. Inter for UI chrome; JetBrains Mono for session names, paths, timestamps, code, and logs. Both self-hosted as static woff2 files, no CDN, no build step.
 

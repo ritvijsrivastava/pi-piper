@@ -1,5 +1,5 @@
 [Unit]
-Description=Piper Hub - multi-session remote control for pi coding-agent sessions
+Description=Pi Piper Hub - multi-session remote control for pi coding-agent sessions
 After=network-online.target
 Wants=network-online.target
 
@@ -7,17 +7,17 @@ Wants=network-online.target
 Type=simple
 
 # Run as the same user who runs `pi` interactively and whose
-# ~/.pi/agent/piper/agent-token piper-agent extensions will read. This
+# ~/.pi/agent/pi-piper/agent-token pi-piper-agent extensions will read. This
 # is also the user with an authenticated `pi`
-# (credentials live under ~/.pi/agent/auth.json) if PIPER_PROJECT_DIR
+# (credentials live under ~/.pi/agent/auth.json) if PI_PIPER_PROJECT_DIR
 # is used for an optional headless session.
 User=YOUR_USER
 
-# See deploy/piper.env.example. Keep this file's permissions restrictive
-# (chmod 600) in case PIPER_AGENT_TOKEN is pinned here.
-EnvironmentFile=/etc/piper/piper.env
+# See deploy/pi-piper.env.example. Keep this file's permissions restrictive
+# (chmod 600) in case PI_PIPER_AGENT_TOKEN is pinned here.
+EnvironmentFile=/etc/pi-piper/pi-piper.env
 
-ExecStart=/usr/local/bin/piper
+ExecStart=/usr/local/bin/pi-piper
 
 Restart=on-failure
 RestartSec=2

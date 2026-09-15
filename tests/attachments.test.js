@@ -6,7 +6,7 @@ import vm from "node:vm";
 const source = fs.readFileSync(new URL("../assets/attachments.js", import.meta.url), "utf8");
 const context = { window: {} };
 vm.runInNewContext(source, context, { filename: "assets/attachments.js" });
-const attachments = context.window.PiperAttachments;
+const attachments = context.window.piPiperAttachments;
 
 test("classifies supported images and text files", () => {
   assert.equal(attachments.kindForFile({ name: "photo.jpg", type: "image/jpeg" }), "image");

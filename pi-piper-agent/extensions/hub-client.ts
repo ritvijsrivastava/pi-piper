@@ -1,6 +1,6 @@
 // WebSocket client for the `/agent` registration protocol (see
 // ARCHITECTURE.md).
-// Structurally this is the mirror image of piper's Rust
+// Structurally this is the mirror image of pi-piper's Rust
 // `rpc::remote_agent::RemoteAgent`: this side owns the actual socket,
 // that side owns the broadcast fan-out.
 
@@ -39,7 +39,7 @@ export class HubClient {
   ) {}
 
   /** Current connection status, for `/rc status` to report accurately
-   * instead of a static string — see piper-agent's index.ts. */
+   * instead of a static string — see pi-piper-agent's index.ts. */
   getStatus(): { status: ConnectionStatus; detail?: string } {
     return { status: this.status, detail: this.statusDetail };
   }

@@ -1,5 +1,5 @@
 //! HTTP + WebSocket server: serves the mobile PWA and bridges browser
-//! and `piper-agent` WebSocket connections to the session registry.
+//! and `pi-piper-agent` WebSocket connections to the session registry.
 
 mod agent;
 mod auth;
@@ -14,10 +14,10 @@ use axum::Router;
 use crate::state::AppState;
 
 /// Builds the full application router:
-/// - `/agent`: `piper-agent` extensions register live sessions here
+/// - `/agent`: `pi-piper-agent` extensions register live sessions here
 ///   (agent-token gated, see `server::auth`).
 /// - `/ws`: phone bridge to one session's RPC stream (Tailscale-identity
-///   gated; unchanged from Piper v1 other than the
+///   gated; unchanged from Pi Piper v1 other than the
 ///   `?session=` param).
 /// - `/ws/control`: phone push channel for the session list screen.
 /// - `/api/sessions`: HTTP snapshot of the session list.

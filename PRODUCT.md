@@ -10,7 +10,7 @@ web
 
 Developers who run the `pi` coding-agent interactively in a terminal
 and want to keep steering a live session from their phone. Confirmed:
-each operator runs their own Piper Hub on their own private Tailscale
+each operator runs their own Pi Piper Hub on their own private Tailscale
 network (multi-operator, not a single shared instance) — the user
 explicitly expects others to adopt it on their own tailnets, not just
 themselves. Each operator's Hub still serves only that operator's own
@@ -21,7 +21,7 @@ driven from both at once, fully synced.
 
 ## Product Purpose
 
-Piper lets a `pi` session started normally in a desktop terminal opt
+Pi Piper lets a `pi` session started normally in a desktop terminal opt
 into remote control (`/rc`) without restarting it, then be viewed and
 driven from a mobile browser (installable PWA) over a private
 Tailscale network — prompts, steering, aborts, model switches, slash
@@ -32,7 +32,7 @@ fidelity versus the terminal, then walk back to the same live state.
 
 ## Positioning
 
-Unlike a hosted "AI chat app," Piper adds no new backend product and
+Unlike a hosted "AI chat app," Pi Piper adds no new backend product and
 invents no new protocol: it relays `pi`'s own documented RPC protocol
 almost verbatim between phone and terminal, and it never leaves the
 operator's private Tailscale network (no public hosting, no app store).
@@ -46,7 +46,7 @@ appears in the other in real time.
   deployed via systemd, bound to loopback and exposed on that
   operator's own tailnet with `tailscale serve` (never `tailscale
   funnel`/public internet).
-- `piper-agent`, a TypeScript `pi` extension installed globally, gives
+- `pi-piper-agent`, a TypeScript `pi` extension installed globally, gives
   any interactive `pi` session the `/rc` command to register with that
   operator's Hub.
 - The phone client is a installable PWA (session list + chat view),
@@ -68,14 +68,14 @@ appears in the other in real time.
 - Not implemented: Web Push notifications (background-finished-session
   alerts) — stretch, not required for the current milestone.
 - Known limitation: `ctx.ui` dialogs raised by *other* project
-  extensions (not `piper-agent` itself) are answered at the terminal
+  extensions (not `pi-piper-agent` itself) are answered at the terminal
   only, not proxied to the phone, when connected via `/rc`.
 - No phone-side secret by design: `/ws`, `/ws/control`, and
   `/api/sessions` authorize any request carrying the
   `Tailscale-User-Login` identity header `tailscale serve` stamps onto
   everything it proxies in — any device signed into the tailnet is
   authorized, nothing to type or configure. A separate, auto-generated
-  agent token still gates `/agent` (where `piper-agent` registers
+  agent token still gates `/agent` (where `pi-piper-agent` registers
   sessions), because that endpoint is reached directly over loopback by
   a local process and never proxied through `tailscale serve`, so
   there's no identity header to trust there.
@@ -90,7 +90,7 @@ appears in the other in real time.
 
 ## Brand Commitments
 
-**Assumed, not confirmed — flag if wrong:** "Piper" is treated as the
+**Assumed, not confirmed — flag if wrong:** "Pi Piper" is treated as the
 settled product name and the existing `assets/icons/` mark as the
 current identity, since the user moved directly to UI work without
 correcting either. No other visual/brand references were made binding.

@@ -1,11 +1,11 @@
 //! Generation and persistence of the agent token.
 //!
-//! This is the only shared secret left in Piper: it gates `/agent`
-//! (where `piper-agent` extensions register live sessions) and is
+//! This is the only shared secret left in Pi Piper: it gates `/agent`
+//! (where `pi-piper-agent` extensions register live sessions) and is
 //! never sent to the phone. `/ws`, `/ws/control`, and `/api/sessions`
 //! have no analogous token — they authorize on the `Tailscale-User-Login`
 //! identity header instead. This token lives in a
-//! local file readable only by the desktop user, so `piper-agent` can
+//! local file readable only by the desktop user, so `pi-piper-agent` can
 //! read it without the user ever typing or copying it.
 
 use std::fs;
@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use uuid::Uuid;
 
-/// Default location: `~/.pi/agent/piper/agent-token`. Mirrors pi's own
+/// Default location: `~/.pi/agent/pi-piper/agent-token`. Mirrors pi's own
 /// `~/.pi/agent/` config directory so the two tools' state lives
 /// side by side.
 pub fn default_path() -> PathBuf {
@@ -24,7 +24,7 @@ pub fn default_path() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."));
     home.join(".pi")
         .join("agent")
-        .join("piper")
+        .join("pi-piper")
         .join("agent-token")
 }
 
@@ -48,7 +48,7 @@ pub fn load_or_create(path: &Path) -> Result<String> {
         fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
     }
     write_private(path, &token)?;
-    tracing::info!(path = %path.display(), "generated a new piper agent token");
+    tracing::info!(path = %path.display(), "generated a new pi-piper agent token");
     Ok(token)
 }
 
@@ -91,7 +91,7 @@ mod tests {
 
     fn tempdir() -> PathBuf {
         let mut dir = std::env::temp_dir();
-        dir.push(format!("piper-agent-token-test-{}", Uuid::new_v4()));
+        dir.push(format!("pi-piper-agent-token-test-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         dir
     }
