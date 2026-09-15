@@ -13,6 +13,7 @@ import { rememberCommandCtx, rememberCtx } from "./context-cache.ts";
 import { dropHandoff, hasHandoff, markHandoff } from "./handoff.ts";
 import { registerEventForwarding } from "./event-bridge.ts";
 import { HubClient } from "./hub-client.ts";
+import { resolveOwner } from "./owner.ts";
 
 const RC_STATUS_ID = "piper-rc";
 
@@ -76,6 +77,9 @@ export default function (pi: ExtensionAPI) {
         sessionFile: ctx.sessionManager.getSessionFile(),
         sessionName: ctx.sessionManager.getSessionName(),
         cwd: ctx.cwd,
+        // Resolved once per process start (it shells out to
+        // `tailscale whois`); the owner of a session never changes.
+        owner: resolveOwner(),
       },
       handleCommand,
       (status, detail) => {

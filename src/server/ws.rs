@@ -30,33 +30,53 @@ pub struct WsQuery {
 }
 
 /// Checks the caller arrived over Tailscale, resolves the target
-/// session, then upgrades the connection and starts bridging it.
+/// session *scoped to the caller's login* (owned sessions are visible
+/// only to their owner, see `SessionMeta::owner`), then upgrades the
+/// connection and starts bridging it.
 pub async fn handler(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
     Query(query): Query<WsQuery>,
     headers: HeaderMap,
 ) -> Response {
-    if !auth::is_authorized_tailscale(&headers) {
+    let Some(login) = auth::tailscale_login(&headers) else {
         return (
             StatusCode::UNAUTHORIZED,
             "not authorized: connect over Tailscale",
         )
             .into_response();
-    }
+    };
 
     let handle = match &query.session {
-        Some(id) => state.registry.get(id),
-        None => state.registry.get_default(),
+        Some(id) => state.registry.get_authorized(id, &login),
+        None => state.registry.get_default_for(&login),
     };
 
     let Some(handle) = handle else {
-        let hint = if query.session.is_some() {
-            "no session registered with that id"
-        } else {
-            "no session id given and it is not the only one registered; GET /api/sessions and pass ?session=<id>"
+        // A session that exists but belongs to someone else is reported
+        // as 403, not folded into 404: the caller is on a trusted
+        // tailnet, and "you don't own that" is far more debuggable than
+        // a misleading "no such session".
+        let (status, hint) = match &query.session {
+            Some(id) => {
+                if state.registry.get(id).is_some() {
+                    (
+                        StatusCode::FORBIDDEN,
+                        "session belongs to another user".to_string(),
+                    )
+                } else {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        "no session registered with that id".to_string(),
+                    )
+                }
+            }
+            None => (
+                StatusCode::BAD_REQUEST,
+                "no session id given and it is not the only one visible to you; GET /api/sessions and pass ?session=<id>".to_string(),
+            ),
         };
-        return (StatusCode::BAD_REQUEST, hint).into_response();
+        return (status, hint).into_response();
     };
 
     ws.on_upgrade(move |socket| bridge(socket, handle))

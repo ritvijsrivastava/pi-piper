@@ -51,6 +51,18 @@ pub struct SessionMeta {
     pub cwd: String,
     pub connected_at_ms: i64,
     pub kind: SessionKind,
+    /// Tailnet login of the user who created this session (e.g.
+    /// `alice@github`), resolved by `piper-agent` in the creator's own
+    /// terminal and sent in the `register` frame. The sole ownership
+    /// signal: every phone-facing surface (`/api/sessions`,
+    /// `/ws/control`, `/ws`) filters sessions by comparing this against
+    /// the request's `Tailscale-User-Login`, so a tailnet user only ever
+    /// sees sessions they started. `None` (older agents, headless
+    /// sessions) means unowned -> visible to everyone, which keeps the
+    /// pre-ownership behavior as a fallback. Immutable after
+    /// registration; never changed by `meta_update`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
 }
 
 /// Passively-derived, frequently-updated status. See

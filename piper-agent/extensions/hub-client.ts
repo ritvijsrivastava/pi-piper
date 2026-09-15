@@ -11,6 +11,10 @@ export interface RegisterInfo {
   sessionFile?: string;
   sessionName?: string;
   cwd: string;
+  /** Tailnet login of whoever started this session (see
+   * `owner.ts`). Absent -> the Hub registers the session unowned,
+   * visible to every tailnet user. Immutable after registration. */
+  owner?: string;
 }
 
 export type CommandHandler = (command: unknown) => Promise<unknown>;
@@ -100,6 +104,7 @@ export class HubClient {
         sessionFile: this.info.sessionFile,
         sessionName: this.info.sessionName,
         cwd: this.info.cwd,
+        owner: this.info.owner,
       });
     });
 

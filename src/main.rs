@@ -55,6 +55,10 @@ async fn main() -> Result<()> {
             cwd: project_dir.display().to_string(),
             connected_at_ms: now_ms(),
             kind: SessionKind::Headless,
+            // Headless sessions are spawned by Piper itself, not in any
+            // user's terminal, so there is no creator to attribute them
+            // to: unowned, visible to every tailnet user.
+            owner: None,
         };
         registry.register(session_id.clone(), AgentLink::Headless(pi.clone()), meta);
 

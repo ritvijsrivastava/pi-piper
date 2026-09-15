@@ -223,10 +223,19 @@ the token doesn't match (see [§7](#7-security-model)).
   "sessionFile": "/home/user/.pi/agent/sessions/.../abc123.jsonl",
   "sessionName": "Refactor auth module",
   "cwd": "/home/user/Code/piper",
+  "owner": "alice@github",
   "pid": 84213,
   "startedAt": "2024-06-01T12:00:00Z"
 }
 ```
+`owner` is the tailnet login of whoever started this `pi` session,
+resolved by the extension (see `piper-agent/extensions/owner.ts`: the
+`PIPER_OWNER` env var, or `tailscale whois` on the client IP from
+`$SSH_CLIENT` when the session runs over Tailscale SSH). It is stamped
+on the session at registration and never changes; the Hub uses it to
+scope every phone-facing surface to the owner (see §7.2). A register
+frame without `owner` (older agents) creates an unowned session,
+visible to every tailnet user.
 Hub responds:
 ```json
 {"type": "registered", "sessionId": "abc123"}
@@ -305,6 +314,12 @@ header (see §7.1) — no token in the URL. Purely Hub-authored; no
 commands flow phone → Hub on this channel other than an optional
 `ping`.
 
+Scoped to the caller: the snapshot and every streamed registry event
+(`session_connected` / `session_disconnected` / `session_meta` /
+`session_update`) are filtered against the caller's login, so a user is
+never even told about sessions they could not attach to (see §7.2).
+Owned session summaries carry an `owner` field; unowned ones omit it.
+
 **Initial snapshot on connect:**
 ```json
 {
@@ -365,7 +380,8 @@ unchanged from v1.
 
 Auth: `Tailscale-User-Login` header (same as `/ws`, see §7.1) — used
 for the initial page load before the control WS is open, and as a
-fallback if WS is unavailable.
+fallback if WS is unavailable. Scoped to the caller per §7.2: owned
+sessions are listed only for their owner.
 
 Response: same array shape as `sessions_snapshot.sessions` in
 [§6.3](#63-control-channel-hub--phone-wscontrol).
@@ -432,6 +448,51 @@ first place. The heavier alternative that closes the local-process gap
 behind `tailscale serve`, so it can call `LocalAPI`'s `WhoIs` against a
 real tailnet peer address rather than trusting a header — is not
 implemented.
+
+### 7.2 Per-user session ownership
+
+On a shared hub, several tailnet users may each run `piper-agent` in
+their own `pi` session. §7.1's boundary alone would make every user's
+session list and every `/ws?session=<id>` attach point shared: any
+tailnet user could watch — and drive — anyone else's live session.
+
+Piper closes this with **ownership**, not more authentication. The
+register frame (§6.1) carries `owner`, the tailnet login of whoever
+started the session, resolved by `piper-agent` in the creator's own
+terminal (`PIPER_OWNER` env var, or `tailscale whois` on the client IP
+from `$SSH_CLIENT` when the session runs over Tailscale SSH). The Hub
+stamps it on the session at registration and enforces one rule
+everywhere a phone-facing surface touches a session:
+
+> An owned session is visible and attachable only to requests whose
+> `Tailscale-User-Login` equals its `owner`. An unowned session
+> (absent `owner`, older agents, headless) is visible to everyone.
+
+Concretely, in every phone-facing handler:
+- `/api/sessions` and `/ws/control`'s initial snapshot list only the
+  caller's sessions.
+- `/ws/control` filters every streamed registry event per viewer, so a
+  user isn't even told when someone else's session connects,
+  disconnects, or starts streaming.
+- `/ws?session=<id>` resolves the id **scoped to the caller**, and
+  answers `403 session belongs to another user` when the id exists but
+  is owned by someone else. `?session=` omitted resolves the sole
+  session *visible to the caller*, so another user's sessions never
+  make yours ambiguous.
+
+Two properties worth stating explicitly:
+- **No secrets are involved.** Ownership reuses the same identity
+  §7.1 already establishes (`Tailscale-User-Login`) — there is no
+  per-session token to mint, store, or pass around, and no allowlist
+  to maintain. Adding a new tailnet user requires zero Hub config;
+  they simply only ever see their own sessions.
+- **The threat model is unchanged.** Ownership is authorization
+  refinement, not a new trust root: it still rests on `tailscaled`
+  having stamped the login header honestly (same loopback caveat as
+  §7.1), and on the agent token remaining secret — anyone who can run
+  `piper-agent` on the Hub machine with a chosen `PIPER_OWNER` can
+  claim any identity, but such a user is already inside the §7.1
+  trust boundary.
 
 ## 8. Command mapping table
 

@@ -31,10 +31,19 @@ const TAILSCALE_LOGIN: &str = "test-user@github";
 /// header, standing in for what `tailscale serve` would stamp on a real
 /// proxied request.
 fn authorized_request(url: &str) -> tokio_tungstenite::tungstenite::handshake::client::Request {
+    request_with_login(url, TAILSCALE_LOGIN)
+}
+
+/// Same, with an explicit login — used to test per-user session
+/// ownership (see `SessionMeta::owner`).
+fn request_with_login(
+    url: &str,
+    login: &str,
+) -> tokio_tungstenite::tungstenite::handshake::client::Request {
     let mut request = url.into_client_request().expect("valid ws url");
     request
         .headers_mut()
-        .insert("Tailscale-User-Login", TAILSCALE_LOGIN.parse().unwrap());
+        .insert("Tailscale-User-Login", login.parse().unwrap());
     request
 }
 
@@ -313,6 +322,148 @@ async fn sessions_api_rejects_tailscale_identity_header_on_funnel_requests() {
         .await
         .expect("request /api/sessions");
     assert_eq!(response.status(), reqwest::StatusCode::UNAUTHORIZED);
+}
+
+/// Registers one owned session via a fresh `/agent` connection.
+async fn register_owned_session(
+    addr: &SocketAddr,
+    session_id: &str,
+    owner: &str,
+) -> tokio_tungstenite::WebSocketStream<
+    tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+> {
+    let (mut agent, _) = connect_async(format!("ws://{addr}/agent?token={AGENT_TOKEN}"))
+        .await
+        .expect("agent connects");
+    agent
+        .send(Message::Text(
+            json!({
+                "type": "register",
+                "sessionId": session_id,
+                "cwd": "/tmp",
+                "owner": owner,
+            })
+            .to_string()
+            .into(),
+        ))
+        .await
+        .unwrap();
+    let ack = recv_json(&mut agent).await;
+    assert_eq!(ack["type"], "registered");
+    agent
+}
+
+/// The session ids visible to `login` from `/api/sessions`.
+async fn visible_sessions(addr: &SocketAddr, login: &str) -> Vec<String> {
+    let sessions: Value = reqwest::Client::new()
+        .get(format!("http://{addr}/api/sessions"))
+        .header("Tailscale-User-Login", login)
+        .send()
+        .await
+        .expect("request /api/sessions")
+        .json()
+        .await
+        .expect("valid json body");
+    sessions
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["sessionId"].as_str().unwrap().to_string())
+        .collect()
+}
+
+#[tokio::test]
+async fn owned_sessions_are_visible_only_to_their_owner() {
+    let addr = spawn_hub().await;
+
+    let _alice = register_owned_session(&addr, "sess-alice", "alice@github").await;
+    let _bob = register_owned_session(&addr, "sess-bob", "bob@github").await;
+
+    // The list is scoped per viewer.
+    assert_eq!(
+        visible_sessions(&addr, "alice@github").await,
+        vec!["sess-alice".to_string()]
+    );
+    assert_eq!(
+        visible_sessions(&addr, "bob@github").await,
+        vec!["sess-bob".to_string()]
+    );
+
+    // `/ws` refuses to attach another user's session even by id.
+    let err = connect_async(request_with_login(
+        &format!("ws://{addr}/ws?session=sess-bob"),
+        "alice@github",
+    ))
+    .await
+    .expect_err("alice must not attach to bob's session");
+    match err {
+        tokio_tungstenite::tungstenite::Error::Http(response) => {
+            assert_eq!(response.status(), reqwest::StatusCode::FORBIDDEN);
+        }
+        other => panic!("expected an HTTP rejection, got {other:?}"),
+    }
+
+    // Unowned sessions remain visible to everyone (pre-ownership
+    // compatibility, see `SessionMeta::owner`).
+    let _unowned = {
+        let (mut agent, _) = connect_async(format!("ws://{addr}/agent?token={AGENT_TOKEN}"))
+            .await
+            .expect("agent connects");
+        agent
+            .send(Message::Text(
+                json!({"type": "register", "sessionId": "sess-open", "cwd": "/tmp"})
+                    .to_string()
+                    .into(),
+            ))
+            .await
+            .unwrap();
+        let _ack = recv_json(&mut agent).await;
+        agent
+    };
+    assert!(visible_sessions(&addr, "alice@github")
+        .await
+        .contains(&"sess-open".to_string()));
+}
+
+#[tokio::test]
+async fn control_channel_filters_registry_events_per_viewer() {
+    let addr = spawn_hub().await;
+
+    let _alice = register_owned_session(&addr, "sess-alice", "alice@github").await;
+    let mut bob = register_owned_session(&addr, "sess-bob", "bob@github").await;
+
+    let (mut control, _) = connect_async(request_with_login(
+        &format!("ws://{addr}/ws/control"),
+        "alice@github",
+    ))
+    .await
+    .expect("control connects");
+
+    // Snapshot shows only alice's session.
+    let snapshot = recv_json(&mut control).await;
+    assert_eq!(snapshot["type"], "sessions_snapshot");
+    let sessions = snapshot["sessions"].as_array().unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0]["sessionId"], "sess-alice");
+
+    // Bob's disconnect must not reach alice's control stream...
+    bob.close(None).await.unwrap();
+    drop(bob);
+    let leaked: Option<Value> = tokio::time::timeout(Duration::from_millis(300), async {
+        recv_json(&mut control).await
+    })
+    .await
+    .ok();
+    assert!(
+        leaked.is_none(),
+        "alice saw an event for bob's session: {leaked:?}"
+    );
+
+    // ...while her own disconnect does.
+    drop(_alice);
+    let update = recv_json(&mut control).await;
+    assert_eq!(update["type"], "session_disconnected");
+    assert_eq!(update["sessionId"], "sess-alice");
 }
 
 /// Minimal HTTP GET without pulling in `reqwest` as a dev-dependency:

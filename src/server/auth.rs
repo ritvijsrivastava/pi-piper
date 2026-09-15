@@ -41,14 +41,15 @@ const TAILSCALE_LOGIN_HEADER: &str = "tailscale-user-login";
 /// coincidentally-valid login.
 const TAILSCALE_FUNNEL_HEADER: &str = "tailscale-funnel-request";
 
-/// Returns true if `headers` carries a non-empty `Tailscale-User-Login`
-/// identity header (added by `tailscale serve`, see `SPEC.md` §7) and
-/// the request isn't flagged as a Funnel request.
+/// Extracts the tailnet login identity (`tailscaled` stamps it onto
+/// requests it proxies in via `tailscale serve`, see `SPEC.md` §7), or
+/// `None` when the request has no trustworthy identity: missing/empty
+/// login header, or a Funnel flag (public internet, not tailnet).
 ///
-/// Deliberately accepts *any* tailnet login, not just an allowlisted
-/// one: Piper's access-control boundary is "reachable on the tailnet at
-/// all" (enforced by `tailscale serve` + Tailscale ACLs), not which
-/// specific login made the request.
+/// This is both the gate (handlers reject with 401 when it returns
+/// `None`) and the *viewer identity* used to enforce per-user session
+/// ownership (see `SessionMeta::owner`), so every phone-facing handler
+/// must call this once and use the result for both purposes.
 ///
 /// **Caveat** (see `SPEC.md` §7): this trusts the header at face value.
 /// It is only meaningful because Piper binds to loopback only and is
@@ -58,14 +59,15 @@ const TAILSCALE_FUNNEL_HEADER: &str = "tailscale-funnel-request";
 /// machine that opens a loopback connection and sets this header itself.
 /// Every local user on the Hub's machine must already be trusted with
 /// full control of your `pi` sessions.
-pub fn is_authorized_tailscale(headers: &HeaderMap) -> bool {
+pub fn tailscale_login(headers: &HeaderMap) -> Option<String> {
     if headers.contains_key(TAILSCALE_FUNNEL_HEADER) {
-        return false;
+        return None;
     }
     headers
         .get(TAILSCALE_LOGIN_HEADER)
         .and_then(|value| value.to_str().ok())
-        .is_some_and(|login| !login.is_empty())
+        .filter(|login| !login.is_empty())
+        .map(str::to_string)
 }
 
 #[cfg(test)]
@@ -96,22 +98,27 @@ mod tests {
 
     #[test]
     fn tailscale_rejects_missing_header() {
-        assert!(!is_authorized_tailscale(&HeaderMap::new()));
+        assert_eq!(tailscale_login(&HeaderMap::new()), None);
     }
 
     #[test]
     fn tailscale_accepts_any_login() {
         let headers = headers_with(&[("Tailscale-User-Login", "alice@github")]);
-        assert!(is_authorized_tailscale(&headers));
+        assert_eq!(tailscale_login(&headers).as_deref(), Some("alice@github"));
 
+        // Accepts any tailnet login, not just an allowlisted one: the
+        // access-control boundary is "reachable on the tailnet at all"
+        // (enforced by `tailscale serve` + Tailscale ACLs); per-user
+        // isolation beyond that is ownership filtering, not
+        // authentication.
         let headers = headers_with(&[("Tailscale-User-Login", "mallory@github")]);
-        assert!(is_authorized_tailscale(&headers));
+        assert_eq!(tailscale_login(&headers).as_deref(), Some("mallory@github"));
     }
 
     #[test]
     fn tailscale_rejects_empty_login() {
         let headers = headers_with(&[("Tailscale-User-Login", "")]);
-        assert!(!is_authorized_tailscale(&headers));
+        assert_eq!(tailscale_login(&headers), None);
     }
 
     #[test]
@@ -120,6 +127,6 @@ mod tests {
             ("Tailscale-User-Login", "alice@github"),
             ("Tailscale-Funnel-Request", "true"),
         ]);
-        assert!(!is_authorized_tailscale(&headers));
+        assert_eq!(tailscale_login(&headers), None);
     }
 }

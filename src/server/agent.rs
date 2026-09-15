@@ -78,6 +78,11 @@ async fn handle(socket: WebSocket, state: AppState) {
                     cwd: text_field(&frame, "cwd").unwrap_or_default(),
                     connected_at_ms: now_ms(),
                     kind: SessionKind::Remote,
+                    // Optional: the tailnet login of whoever started
+                    // this `pi` session, resolved by `piper-agent` (see
+                    // `SessionMeta::owner`). Absent -> unowned ->
+                    // visible to every tailnet user.
+                    owner: text_field(&frame, "owner"),
                 };
 
                 let remote_agent = std::sync::Arc::new(RemoteAgent::new(tx.clone()));

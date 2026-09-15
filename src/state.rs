@@ -18,7 +18,7 @@ pub struct AppState {
     /// phone-facing routes (`/ws`, `/ws/control`, `/api/sessions`) have
     /// no analogous secret: they authorize any request carrying a
     /// `Tailscale-User-Login` identity header, see
-    /// `server::auth::is_authorized_tailscale`.
+    /// `server::auth::tailscale_login`.
     pub agent_token: Arc<str>,
 }
 

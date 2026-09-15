@@ -81,9 +81,15 @@ impl SessionRegistry {
         let removed = self.sessions.write().unwrap().remove(id);
         if let Some(handle) = removed {
             handle.mark_disconnected();
-            let _ = self
-                .control_tx
-                .send(json!({"type": "session_disconnected", "sessionId": id}));
+            // The owner rides along on the disconnect event so
+            // `/ws/control` can keep filtering per-viewer even though
+            // the session is already gone from the registry (see
+            // `is_visible_event` in `server::control`).
+            let _ = self.control_tx.send(json!({
+                "type": "session_disconnected",
+                "sessionId": id,
+                "owner": handle.meta.read().unwrap().owner,
+            }));
         }
     }
 
@@ -127,16 +133,47 @@ impl SessionRegistry {
         self.sessions.read().unwrap().get(id).cloned()
     }
 
-    /// Returns the sole registered session, if exactly one is
-    /// registered. Used by `/ws` when the phone omits `?session=`, to
-    /// keep the single-session case as simple as Piper v1.
-    pub fn get_default(&self) -> Option<Arc<SessionHandle>> {
-        let sessions = self.sessions.read().unwrap();
-        if sessions.len() == 1 {
-            sessions.values().next().cloned()
+    /// `get`, restricted to sessions `login` is allowed to see: owned
+    /// sessions resolve only for their owner, unowned ones for anyone.
+    /// Used by `/ws` so a tailnet user cannot attach to another user's
+    /// session by guessing its id.
+    pub fn get_authorized(&self, id: &str, login: &str) -> Option<Arc<SessionHandle>> {
+        let handle = self.get(id)?;
+        let visible = is_visible_to(handle.meta.read().unwrap().owner.as_deref(), login);
+        visible.then_some(handle)
+    }
+
+    /// Returns the sole session visible to `login`, if exactly one is.
+    /// The per-viewer version of `get_default`, used by `/ws` when the
+    /// phone omits `?session=`. Another user's owned sessions do not
+    /// make *your* single session ambiguous.
+    pub fn get_default_for(&self, login: &str) -> Option<Arc<SessionHandle>> {
+        let visible: Vec<_> = self
+            .sessions
+            .read()
+            .unwrap()
+            .values()
+            .filter(|h| is_visible_to(h.meta.read().unwrap().owner.as_deref(), login))
+            .cloned()
+            .collect();
+        if visible.len() == 1 {
+            visible.into_iter().next()
         } else {
             None
         }
+    }
+
+    /// The session list as `login` should see it: unowned sessions
+    /// (older agents, headless) plus the caller's own. Used by
+    /// `/api/sessions` and `/ws/control`'s snapshot.
+    pub fn visible_to(&self, login: &str) -> Vec<SessionSummary> {
+        self.sessions
+            .read()
+            .unwrap()
+            .values()
+            .filter(|h| is_visible_to(h.meta.read().unwrap().owner.as_deref(), login))
+            .map(|h| h.summary())
+            .collect()
     }
 
     pub fn list(&self) -> Vec<SessionSummary> {
@@ -150,6 +187,17 @@ impl SessionRegistry {
 
     pub fn control_subscribe(&self) -> broadcast::Receiver<Value> {
         self.control_tx.subscribe()
+    }
+}
+
+/// Ownership rule shared by every phone-facing surface: a session with
+/// an `owner` is visible only to that tailnet login; an unowned session
+/// is visible to everyone (pre-ownership compatibility, see
+/// `SessionMeta::owner`).
+fn is_visible_to(owner: Option<&str>, login: &str) -> bool {
+    match owner {
+        None => true,
+        Some(owner) => owner == login,
     }
 }
 

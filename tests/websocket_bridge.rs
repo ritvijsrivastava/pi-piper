@@ -64,6 +64,7 @@ async fn spawn_test_server() -> (SocketAddr, Arc<PiProcess>) {
         cwd: config.project_dir.clone().unwrap().display().to_string(),
         connected_at_ms: now_ms(),
         kind: SessionKind::Headless,
+        owner: None,
     };
     registry.register(
         "test-session".to_string(),
@@ -163,6 +164,7 @@ async fn rejects_ws_when_session_id_required_but_missing() {
             cwd: ".".to_string(),
             connected_at_ms: now_ms(),
             kind: SessionKind::Headless,
+            owner: None,
         };
         registry.register(id.to_string(), AgentLink::Headless(pi), meta);
     }

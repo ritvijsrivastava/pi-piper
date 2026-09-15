@@ -42,6 +42,7 @@ same live session.
 | `PIPER_HUB_URL` | `ws://127.0.0.1:4390/agent` | Where the Hub's `/agent` endpoint is. Override if the Hub runs on another host. |
 | `PIPER_AGENT_TOKEN` | *(reads from file)* | The agent token. Normally left unset so it's read from disk instead. |
 | `PIPER_AGENT_TOKEN_PATH` | `~/.pi/agent/piper/agent-token` | Where to read the agent token from, if `PIPER_AGENT_TOKEN` isn't set. |
+| `PIPER_OWNER` | *(auto-detected)* | Tailnet login recorded as this session's owner, e.g. `alice@github`. Only the owner sees the session from the phone (see SPEC.md §7.2). By default it's auto-detected when running over Tailscale SSH via `tailscale whois` on the client IP from `$SSH_CLIENT`; without it, the session registers unowned and is visible to every tailnet user. |
 
 You should not normally need to set any of these on a single-desktop
 setup — the defaults match the Hub's own defaults exactly.
