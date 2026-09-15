@@ -1,6 +1,6 @@
 // piper-agent: adds `/rc` to connect the current interactive `pi`
 // session to a piper Hub for remote control from your phone. See
-// SPEC.md (in the piper repo) for the architecture and
+// ARCHITECTURE.md (in the piper repo) for the architecture and
 // piper-agent/README.md for setup and known limitations.
 
 import type {

@@ -1,4 +1,5 @@
-// WebSocket client for the `/agent` registration protocol (SPEC.md §6.1).
+// WebSocket client for the `/agent` registration protocol (see
+// ARCHITECTURE.md).
 // Structurally this is the mirror image of piper's Rust
 // `rpc::remote_agent::RemoteAgent`: this side owns the actual socket,
 // that side owns the broadcast fan-out.
@@ -50,7 +51,7 @@ export class HubClient {
   }
 
   /** Patches display metadata (e.g. a `/name` rename) without
-   * reconnecting — see SPEC.md §6.1 `meta_update`. */
+   * reconnecting — sent as a `meta_update` frame (see ARCHITECTURE.md). */
   updateInfo(patch: Partial<Omit<RegisterInfo, "sessionId">>): void {
     this.info = { ...this.info, ...patch };
     this.sendFrame({ type: "meta_update", sessionId: this.info.sessionId, patch });

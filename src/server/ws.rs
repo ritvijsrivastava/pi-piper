@@ -5,7 +5,7 @@
 //! speaks pi's own RPC protocol directly (see pi's `docs/rpc.md`), so
 //! Piper does not define or maintain a second protocol. Piper only
 //! validates that a message is well-formed JSON before forwarding it.
-//! Unchanged from Piper v1 other than session selection (`SPEC.md` §6.4).
+//! Unchanged from Piper v1 other than session selection.
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
@@ -25,7 +25,7 @@ use crate::state::AppState;
 #[derive(Deserialize)]
 pub struct WsQuery {
     /// Which registered session to bridge to. May be omitted only when
-    /// exactly one session is registered (see `SPEC.md` §6.4).
+    /// exactly one session is registered.
     session: Option<String>,
 }
 

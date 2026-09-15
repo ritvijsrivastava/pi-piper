@@ -7,8 +7,8 @@ Wants=network-online.target
 Type=simple
 
 # Run as the same user who runs `pi` interactively and whose
-# ~/.pi/agent/piper/agent-token piper-agent extensions will read (see
-# SPEC.md §7). This is also the user with an authenticated `pi`
+# ~/.pi/agent/piper/agent-token piper-agent extensions will read. This
+# is also the user with an authenticated `pi`
 # (credentials live under ~/.pi/agent/auth.json) if PIPER_PROJECT_DIR
 # is used for an optional headless session.
 User=YOUR_USER

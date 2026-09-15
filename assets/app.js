@@ -4,12 +4,12 @@
 // step would add more complexity than it removes (KISS/YAGNI).
 //
 // Two screens, hash-routed so the phone's back button/gesture behaves
-// like a native app (SPEC.md §9.3):
+// like a native app:
 //   #/sessions        - session list ("home"), fed by /api/sessions +
-//                        /ws/control (SPEC.md §9.1)
+//                        /ws/control
 //   #/session/<id>    - chat view for one session, speaking pi's RPC
-//                        protocol directly over /ws?session=<id>
-//                        (SPEC.md §9.2) - Piper's server only relays
+//                        protocol directly over /ws?session=<id> -
+//                        Piper's server only relays
 //                        JSON, it does not define a separate wire format.
 //
 // At desktop widths (see style.css `#app-shell`) the session list also
@@ -163,7 +163,7 @@
   desktopQuery.addEventListener("change", renderRoute);
   backButton.addEventListener("click", navigateToSessions);
 
-  // ---- Session list screen (SPEC.md §9.1) -----------------------------------
+  // ---- Session list screen ------------------------------------------------
 
   const Sessions = (() => {
     /** @type {WebSocket | null} */
@@ -172,7 +172,7 @@
     const MAX_RECONNECT_DELAY_MS = 15000;
     let reconnectTimer = null;
 
-    /** sessionId -> session summary (camelCase fields, see SPEC.md §6.3) */
+    /** sessionId -> session summary (camelCase fields, see ARCHITECTURE.md) */
     const sessions = new Map();
     let searchQuery = "";
     /** The session open in the chat pane, highlighted in the rail at
@@ -182,7 +182,7 @@
 
     // Authorization travels entirely at the network layer now: the Hub
     // trusts the `Tailscale-User-Login` identity header that `tailscale
-    // serve` stamps onto every proxied request (see SPEC.md §7), which
+    // serve` stamps onto every proxied request (see ARCHITECTURE.md), which
     // this page cannot see or influence itself — there is nothing to
     // configure here. A 401 means the request didn't arrive through
     // Tailscale at all (e.g. the Hub is being hit directly, or
@@ -426,7 +426,7 @@
     };
   })();
 
-  // ---- Chat screen (SPEC.md §9.2) -------------------------------------------
+  // ---- Chat screen ---------------------------------------------------------
 
   const Chat = (() => {
     /** @type {WebSocket | null} */
@@ -442,8 +442,7 @@
     let currentThinkingBubble = null;
     const toolBubbles = new Map();
     /** Counts tool calls within the current agent turn so chained calls
-     * carry a visible step index (SPEC.md-adjacent: SRE-world raise from
-     * the direction round, not in the original spec). */
+     * carry a visible step index. */
     let toolStepCount = 0;
 
     /** Cached `get_commands` result for slash autocomplete, refreshed once
@@ -748,8 +747,8 @@
           break;
         default:
           // queue_update and a handful of retry/error events are not
-          // surfaced in this client yet; see piper-agent/README.md and
-          // SPEC.md §12 "Known gaps".
+          // surfaced in this client yet; see piper-agent/README.md "Known
+          // gaps".
           break;
       }
     }
@@ -791,7 +790,7 @@
       }
     }
 
-    // ---- Extension UI dialogs (SPEC.md §9.2) ----------------------------------
+    // ---- Extension UI dialogs ------------------------------------------------
     // Basic but functional: uses native browser dialogs rather than a
     // custom modal component. Fine for occasional select/confirm/input
     // prompts; see README for nicer-UI as a future improvement.

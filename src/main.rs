@@ -2,7 +2,7 @@
 //! sessions, so they can be controlled remotely (e.g. from a phone
 //! browser) over a private Tailscale network.
 //!
-//! See `README.md` for setup and `SPEC.md` for the full architecture.
+//! See `README.md` for setup and `ARCHITECTURE.md` for how it works.
 
 use std::sync::Arc;
 
@@ -41,8 +41,8 @@ async fn main() -> Result<()> {
     let registry = Arc::new(SessionRegistry::new());
 
     // Optional headless (v1-compatible) session: Piper spawns `pi
-    // --mode rpc` itself for a project with no terminal open. See
-    // `SPEC.md` §10. Kept alive here so we can shut it down cleanly on
+    // --mode rpc` itself for a project with no terminal open. Kept
+    // alive here so we can shut it down cleanly on
     // Ctrl+C; its own lifecycle otherwise just unregisters itself from
     // the registry if it exits.
     let headless_pi: Option<Arc<PiProcess>> = if let Some(project_dir) = &config.project_dir {

@@ -1,9 +1,9 @@
 //! End-to-end test of the `/agent` <-> `/ws` <-> `/ws/control` <->
-//! `/api/sessions` machinery introduced for `piper-agent` (`SPEC.md`
-//! §6). Does not spawn a real `pi` process or use a real `piper-agent`
+//! `/api/sessions` machinery introduced for `piper-agent`. Does not
+//! spawn a real `pi` process or use a real `piper-agent`
 //! extension: a plain WebSocket client stands in for the extension,
 //! since the wire protocol on `/agent` is deliberately small and
-//! transport-only (see `SPEC.md` §6.1).
+//! transport-only (see `ARCHITECTURE.md`).
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -23,7 +23,7 @@ use piper::state::AppState;
 const AGENT_TOKEN: &str = "agent-token";
 
 /// Tailnet login stamped on requests that pretend to have been proxied
-/// in by `tailscale serve` (see `SPEC.md` §7), which is now the only
+/// in by `tailscale serve`, which is the only
 /// thing that authorizes `/ws` and `/ws/control`.
 const TAILSCALE_LOGIN: &str = "test-user@github";
 

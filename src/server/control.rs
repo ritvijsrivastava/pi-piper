@@ -1,5 +1,6 @@
 //! `/ws/control`: push channel feeding the phone's session list screen.
-//! See `SPEC.md` §6.3. Purely Hub-authored; the only thing the phone
+//! Message shapes are documented in `ARCHITECTURE.md`. Purely
+//! Hub-authored; the only thing the phone
 //! ever sends here is an optional ping/close.
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};

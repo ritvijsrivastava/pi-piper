@@ -3,7 +3,8 @@
 A pi extension that adds `/rc` to connect your **current interactive
 `pi` session** to a [piper](../README.md) Hub, so it can be controlled
 remotely (e.g. from your phone) while you keep using the real terminal
-UI normally. See [`SPEC.md`](../SPEC.md) for the full architecture —
+UI normally. See [`ARCHITECTURE.md`](../ARCHITECTURE.md) for the
+architecture —
 this file covers setup and the practical details/limitations of this
 extension specifically.
 
@@ -20,10 +21,9 @@ same live session.
    on first run at `~/.pi/agent/piper/agent-token`.
 2. Install this extension globally so it's available in every project:
    ```bash
-   pi install /absolute/path/to/piper-agent   # local checkout
-   # or, once published:
-   pi install npm:piper-agent
-   pi install git:you/piper-agent
+   pi install git:github.com/ritvijsrivastava/piper   # this repo, as a pi package
+   # or, from a local checkout:
+   pi install /absolute/path/to/piper/piper-agent
    ```
    `npm install` runs automatically as part of `pi install`, resolving
    the `ws` dependency.
@@ -75,7 +75,7 @@ registry entry in place and never disconnects at all.
 
 ## Known gaps
 
-This extension maps pi RPC commands (`SPEC.md` §8) onto pi's
+This extension maps pi RPC commands onto pi's
 **extension API**, not onto RPC mode itself, so a few things don't have
 a confirmed equivalent yet and fail cleanly with a clear error instead
 of silently no-op-ing:

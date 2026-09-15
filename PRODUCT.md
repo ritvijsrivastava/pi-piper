@@ -99,7 +99,8 @@ correcting either. No other visual/brand references were made binding.
 
 No marketing copy, testimonials, case studies, or press exist or are
 to be fabricated — this is a developer tool documented by its own
-README.md and SPEC.md, not a persuasion surface. `SPEC.md` §13 records
+README.md and ARCHITECTURE.md, not a persuasion surface. `ARCHITECTURE.md`'s
+"Implementation notes" records
 exactly what has been validated end-to-end versus covered only by
 automated tests; treat anything not listed there as unverified in
 production use.

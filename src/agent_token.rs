@@ -1,10 +1,10 @@
-//! Generation and persistence of the agent token (see `SPEC.md` §7).
+//! Generation and persistence of the agent token.
 //!
 //! This is the only shared secret left in Piper: it gates `/agent`
 //! (where `piper-agent` extensions register live sessions) and is
 //! never sent to the phone. `/ws`, `/ws/control`, and `/api/sessions`
 //! have no analogous token — they authorize on the `Tailscale-User-Login`
-//! identity header instead (see `SPEC.md` §7). This token lives in a
+//! identity header instead. This token lives in a
 //! local file readable only by the desktop user, so `piper-agent` can
 //! read it without the user ever typing or copying it.
 

@@ -25,8 +25,8 @@ use piper::session::{now_ms, AgentLink, SessionKind, SessionMeta};
 use piper::state::AppState;
 
 /// Builds a WebSocket upgrade request that looks like it was proxied in
-/// by `tailscale serve` for tailnet user `test-user@github` (see
-/// `SPEC.md` §7) — the only thing that authorizes `/ws` now that there
+/// by `tailscale serve` for tailnet user `test-user@github` — the only
+/// thing that authorizes `/ws` now that there
 /// is no phone token.
 fn authorized_request(url: &str) -> tokio_tungstenite::tungstenite::handshake::client::Request {
     let mut request = url.into_client_request().expect("valid ws url");
@@ -107,7 +107,7 @@ async fn relays_get_state_round_trip() {
     let (addr, pi) = spawn_test_server().await;
 
     // No `?session=` needed: exactly one session is registered, so `/ws`
-    // defaults to it (see `SPEC.md` §6.4).
+    // defaults to it.
     let (mut socket, _response) = connect_async(authorized_request(&format!("ws://{addr}/ws")))
         .await
         .expect("authorized connection must succeed");

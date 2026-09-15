@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use clap::Parser;
 
 /// Piper: multi-session remote control hub for `pi` coding-agent
-/// sessions. See `SPEC.md` for the full architecture.
+/// sessions. See `ARCHITECTURE.md` for how the pieces fit together.
 #[derive(Debug, Parser)]
 #[command(name = "piper", version, about)]
 pub struct Config {
@@ -20,7 +20,7 @@ pub struct Config {
     pub pi_command: String,
 
     /// Working directory for an optional spawned headless `pi` process
-    /// (Piper v1 behavior, see `SPEC.md` §10). Omit this to run Piper as
+    /// (Piper v1 behavior, kept as a fallback). Omit this to run Piper as
     /// a pure hub with no spawned child, relying entirely on
     /// `piper-agent` (`/rc`) connections for sessions.
     #[arg(long, env = "PIPER_PROJECT_DIR")]
@@ -60,7 +60,7 @@ pub struct Config {
     /// `/agent` connection. If unset, Piper generates one on first run
     /// and persists it to `--agent-token-path`; `piper-agent` reads it
     /// directly from that file, so it never needs to be typed or copied
-    /// to the phone. See `SPEC.md` §7.
+    /// to the phone. See `ARCHITECTURE.md` for the full model.
     #[arg(long, env = "PIPER_AGENT_TOKEN")]
     pub agent_token: Option<String>,
 

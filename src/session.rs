@@ -1,6 +1,6 @@
 //! Session identity, metadata, and the `AgentLink` abstraction.
 //!
-//! See `SPEC.md` §4 and §5.1. A "session" is one running `pi` process,
+//! A "session" is one running `pi` process,
 //! reached either by spawning it ourselves (`AgentLink::Headless`, the
 //! Piper v1 behavior) or by a `piper-agent` extension inside an
 //! already-running interactive `pi` dialing in over `/agent`

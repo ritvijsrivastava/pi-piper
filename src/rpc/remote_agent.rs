@@ -1,5 +1,6 @@
 //! WebSocket-backed `AgentLink`: represents one `piper-agent` extension
-//! connected to the Hub over `/agent`. See `SPEC.md` §5.1 and §6.1.
+//! connected to the Hub over `/agent` (registration protocol in
+//! `ARCHITECTURE.md`).
 //!
 //! Structurally this mirrors `rpc::process::PiProcess`: an
 //! `events_tx` broadcast channel fans inbound JSON out to any number of
@@ -54,8 +55,8 @@ impl RemoteAgent {
         let _ = self.events_tx.send(payload);
     }
 
-    /// Wraps `command` in the `/agent` command envelope (see
-    /// `SPEC.md` §6.1) and hands it to the writer task. The envelope id
+    /// Wraps `command` in the `/agent` command envelope (wire format
+    /// in `ARCHITECTURE.md`) and hands it to the writer task. The envelope id
     /// is only for the extension's own bookkeeping; the Hub does not
     /// correlate responses back to a specific `send()` call, since
     /// responses are re-broadcast to every subscriber the same way

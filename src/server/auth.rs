@@ -3,7 +3,7 @@
 //! This is defense-in-depth, not the primary security boundary: Piper is
 //! designed to be reachable only over a private Tailscale network (see
 //! `README.md`). There are two independent checks, for two different
-//! reasons (see `SPEC.md` §7):
+//! reasons:
 //!
 //! - The phone-facing routes (`/ws`, `/ws/control`, `/api/sessions`)
 //!   trust the `Tailscale-User-Login` identity header that `tailscale
@@ -42,7 +42,7 @@ const TAILSCALE_LOGIN_HEADER: &str = "tailscale-user-login";
 const TAILSCALE_FUNNEL_HEADER: &str = "tailscale-funnel-request";
 
 /// Returns true if `headers` carries a non-empty `Tailscale-User-Login`
-/// identity header (added by `tailscale serve`, see `SPEC.md` §7) and
+/// identity header (added by `tailscale serve`) and
 /// the request isn't flagged as a Funnel request.
 ///
 /// Deliberately accepts *any* tailnet login, not just an allowlisted
@@ -50,7 +50,7 @@ const TAILSCALE_FUNNEL_HEADER: &str = "tailscale-funnel-request";
 /// all" (enforced by `tailscale serve` + Tailscale ACLs), not which
 /// specific login made the request.
 ///
-/// **Caveat** (see `SPEC.md` §7): this trusts the header at face value.
+/// **Caveat**: this trusts the header at face value.
 /// It is only meaningful because Piper binds to loopback only and is
 /// meant to be reached exclusively through `tailscale serve`'s proxy —
 /// but Piper cannot cryptographically distinguish a connection actually

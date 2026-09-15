@@ -1,8 +1,7 @@
-//! `SessionRegistry`: the Hub's switchboard. See `SPEC.md` §5.1 and
-//! §6.3.
+//! `SessionRegistry`: the Hub's switchboard.
 //!
 //! Keyed by session id (not project path — two terminals in the same
-//! repo are two different sessions, see `SPEC.md` §12). Holds every
+//! repo are two different sessions). Holds every
 //! currently-registered `SessionHandle` and a broadcast channel of
 //! registry-change notifications consumed by `/ws/control`.
 
@@ -87,7 +86,7 @@ impl SessionRegistry {
         }
     }
 
-    /// Applies a `meta_update` patch (see `SPEC.md` §6.1) for a
+    /// Applies a `meta_update` patch (see `ARCHITECTURE.md`) for a
     /// `session_info_changed` event forwarded by `piper-agent`.
     pub fn update_meta(&self, id: &str, patch: &Value) {
         let sessions = self.sessions.read().unwrap();

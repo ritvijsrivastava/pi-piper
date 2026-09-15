@@ -1,6 +1,6 @@
 //! `GET /api/sessions`: HTTP snapshot of the session list, used for the
-//! PWA's initial load before `/ws/control` is open (and as a fallback).
-//! See `SPEC.md` §6.5.
+//! PWA's initial load before `/ws/control` is open (and as a fallback);
+//! same summary shape as the control channel.
 
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};

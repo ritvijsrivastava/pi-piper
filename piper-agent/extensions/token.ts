@@ -1,4 +1,4 @@
-// Agent-token and Hub-URL resolution. See SPEC.md §7.
+// Agent-token and Hub-URL resolution.
 //
 // The agent token is never typed or copied by the user: piper (the Rust
 // Hub) generates one on first run and persists it to a local file this

@@ -7,19 +7,18 @@ and keep using the real terminal at the same time, fully synced. No
 public hosting, no app store deployment: a webpage served privately on
 your tailnet.
 
-See [`SPEC.md`](SPEC.md) for the full architecture and design rationale.
-This file is setup-oriented.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for a code-oriented tour of how
+it works, including the wire protocol and security model. This file is
+setup-oriented.
 
 ## Status
 
 Implemented: the Hub's session registry, `/agent` + `/ws` + `/ws/control`
 + `/api/sessions`, the `piper-agent` extension (`/rc`, event forwarding,
-command dispatch per `SPEC.md` §8), and the PWA's session list + chat
-view. See `SPEC.md` §13 for exactly what was validated end-to-end versus
-covered only by automated tests, and `piper-agent/README.md` "Known
-gaps" for the handful of RPC commands without a confirmed extension-API
-equivalent yet. Not implemented: Web Push notifications (`SPEC.md`
-milestone 8, stretch).
+command dispatch), and the PWA's session list + chat view. The handful
+of RPC commands without a confirmed extension-API equivalent are listed
+under "Known gaps" in [`piper-agent/README.md`](piper-agent/README.md).
+Not implemented: Web Push notifications.
 
 ## How it fits together
 
@@ -50,14 +49,18 @@ shows up in the other, live.
 
 Piper relays pi's own documented RPC protocol (see pi's `docs/rpc.md`)
 almost verbatim between the phone and each session; there's no separate
-protocol invented to keep in sync. See [`SPEC.md`](SPEC.md) §6 for the
-exact wire shapes.
+protocol invented to keep in sync. See [`ARCHITECTURE.md`](ARCHITECTURE.md)
+for the exact wire shapes.
 
 ## Components
 
 - **This repo (Rust)**: the Hub. Binds `127.0.0.1:4390` by default;
   expose it to your tailnet with `tailscale serve` (see below). Also
-  serves the mobile PWA.
+  serves the mobile PWA. The repo is also a
+  [pi package](https://pi.dev/docs/latest/packages) — its
+  `package.json` manifest registers the `piper-agent` extension — so
+  `pi install git:github.com/ritvijsrivastava/piper` installs `/rc`
+  straight from this repository.
 - **[`piper-agent/`](piper-agent/README.md)** (TypeScript pi extension):
   install this once, globally, so `/rc` is available in every project.
   See its README for setup and known limitations.
@@ -75,7 +78,16 @@ generates an **agent token** at `~/.pi/agent/piper/agent-token` (mode
 `0600`); `piper-agent` reads this automatically, you never type or copy
 it anywhere.
 
-Install `piper-agent` once (see its README), then in any `pi` session:
+Install `piper-agent` once so `/rc` is available in every `pi`
+session:
+
+```bash
+pi install git:github.com/ritvijsrivastava/piper   # this repo, as a pi package
+# or, from a local checkout of this repo:
+pi install /absolute/path/to/piper/piper-agent
+```
+
+Then in any `pi` session:
 
 ```
 /rc
@@ -94,7 +106,7 @@ what the systemd deployment uses so secrets never appear in `ps` output:
 | `--bind` | `PIPER_BIND` | Address to listen on. Defaults to `127.0.0.1:4390`. |
 | `--agent-token` | `PIPER_AGENT_TOKEN` | Pin the agent token instead of auto-generating one. Usually left unset. |
 | `--agent-token-path` | `PIPER_AGENT_TOKEN_PATH` | Where to persist a generated agent token. Defaults to `~/.pi/agent/piper/agent-token`. |
-| `--project-dir` | `PIPER_PROJECT_DIR` | Optional: also spawn a headless `pi --mode rpc` for one project with no terminal open (v1-compatible fallback, see `SPEC.md` §10). Most setups don't need this. |
+| `--project-dir` | `PIPER_PROJECT_DIR` | Optional: also spawn a headless `pi --mode rpc` for one project with no terminal open (v1-compatible fallback). Most setups don't need this. |
 | `--session`, `--no-session`, `--pi-arg` | `PIPER_SESSION`, `PIPER_NO_SESSION` | Only relevant together with `--project-dir`. |
 
 **Auth note:** `/ws`, `/ws/control`, and `/api/sessions` (the
@@ -107,11 +119,11 @@ see and control your `pi` sessions. `/agent` (where `piper-agent`
 extensions register sessions) is different — it's reached directly over
 loopback by a local process, never proxied through `tailscale serve`,
 so there's no identity header to trust there; it keeps its own separate
-shared secret, the agent token. See `SPEC.md` §7 for the full model and
-why Piper cannot tell a proxied tailnet request apart from a local
-process by peer address alone — which is also why none of this is a
-substitute for restricting the tailnet itself (ACLs, who's on it) and
-never running `tailscale funnel` in front of Piper.
+shared secret, the agent token. See [`ARCHITECTURE.md`](ARCHITECTURE.md)
+for the full model and why Piper cannot tell a proxied tailnet request
+apart from a local process by peer address alone — which is also why
+none of this is a substitute for restricting the tailnet itself (ACLs,
+who's on it) and never running `tailscale funnel` in front of Piper.
 
 ### Mobile client
 
@@ -173,8 +185,13 @@ generated and read).
 
 ### 4. Install `piper-agent`
 
-See [`piper-agent/README.md`](piper-agent/README.md). Do this as the
-same user configured above.
+```bash
+pi install git:github.com/ritvijsrivastava/piper
+```
+
+(or from a local checkout: `pi install /absolute/path/to/piper/piper-agent`).
+See [`piper-agent/README.md`](piper-agent/README.md) for details and
+known limitations. Do this as the same user configured above.
 
 ### 5. Expose it on your tailnet with `tailscale serve`
 
@@ -227,7 +244,8 @@ headless-link tests, `tests/websocket_bridge.rs`) and drive the full
 axum router over a real WebSocket. `tests/agent_bridge.rs` covers the
 `/agent` <-> `/ws` <-> `/ws/control` <-> `/api/sessions` machinery with a
 plain WebSocket client standing in for `piper-agent` (the wire protocol
-is deliberately small and transport-only, see `SPEC.md` §6.1, so this
+is deliberately small and transport-only, see [`ARCHITECTURE.md`](ARCHITECTURE.md),
+so this
 doesn't need a real extension to exercise). Neither test suite calls the
 configured LLM, so both run without network access or API cost beyond
 whatever `pi` itself needs to start up.
@@ -237,4 +255,4 @@ For the extension side, see
 
 ## License
 
-MIT
+[MIT](LICENSE)

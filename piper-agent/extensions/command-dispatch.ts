@@ -1,8 +1,8 @@
-// Executes an inbound pi RPC-shaped command (SPEC.md §6.1/§8) against
+// Executes an inbound pi RPC-shaped command against
 // the real running session via `pi`'s extension API, and returns an
 // RPC-shaped response. This is the heart of "the phone controls the
-// same live session your terminal is showing" — see SPEC.md §8 for the
-// full command -> extension-API mapping table this file implements.
+// same live session your terminal is showing" — the command ->
+// extension-API mapping this file implements is inline below.
 //
 // Commands marked unsupported() below have no confirmed extension-API
 // equivalent as of this pi version; see piper-agent/README.md "Known

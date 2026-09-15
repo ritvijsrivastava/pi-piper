@@ -1,5 +1,6 @@
 // Forwards pi's extension-level events to the Hub as pi RPC-shaped JSON
-// (SPEC.md §6.2). Most extension events already match `docs/rpc.md`'s
+// (the wire format is pi's documented RPC protocol; see ARCHITECTURE.md).
+// Most extension events already match `docs/rpc.md`'s
 // documented event shapes closely; a few are remapped or reshaped here
 // where the interactive-mode extension event differs from the
 // documented RPC wire event. See piper-agent/README.md "Known gaps" for
