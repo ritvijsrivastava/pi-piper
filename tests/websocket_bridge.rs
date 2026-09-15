@@ -14,6 +14,7 @@ use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use tokio::net::TcpListener;
 use tokio_tungstenite::connect_async;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::Message;
 
 use piper::config::Config;
@@ -23,7 +24,17 @@ use piper::server;
 use piper::session::{now_ms, AgentLink, SessionKind, SessionMeta};
 use piper::state::AppState;
 
-const TOKEN: &str = "integration-test-token";
+/// Builds a WebSocket upgrade request that looks like it was proxied in
+/// by `tailscale serve` for tailnet user `test-user@github` (see
+/// `SPEC.md` §7) — the only thing that authorizes `/ws` now that there
+/// is no phone token.
+fn authorized_request(url: &str) -> tokio_tungstenite::tungstenite::handshake::client::Request {
+    let mut request = url.into_client_request().expect("valid ws url");
+    request
+        .headers_mut()
+        .insert("Tailscale-User-Login", "test-user@github".parse().unwrap());
+    request
+}
 
 fn test_config() -> Config {
     Config {
@@ -33,10 +44,8 @@ fn test_config() -> Config {
         no_session: true,
         extra_pi_args: Vec::new(),
         bind: "127.0.0.1:0".parse().unwrap(),
-        token: TOKEN.to_string(),
         agent_token: Some("unused-in-this-test".to_string()),
         agent_token_path: None,
-        allowed_tailscale_logins: Vec::new(),
     }
 }
 
@@ -62,12 +71,7 @@ async fn spawn_test_server() -> (SocketAddr, Arc<PiProcess>) {
         meta,
     );
 
-    let state = AppState::new(
-        registry,
-        config.token.clone(),
-        "unused".to_string(),
-        Vec::new(),
-    );
+    let state = AppState::new(registry, "unused".to_string());
 
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
@@ -86,19 +90,13 @@ async fn spawn_test_server() -> (SocketAddr, Arc<PiProcess>) {
 }
 
 #[tokio::test]
-async fn rejects_connection_without_valid_token() {
+async fn rejects_connection_without_tailscale_identity_header() {
     let (addr, pi) = spawn_test_server().await;
 
     let result = connect_async(format!("ws://{addr}/ws")).await;
     assert!(
         result.is_err(),
-        "connection without a token must be rejected"
-    );
-
-    let result = connect_async(format!("ws://{addr}/ws?token=wrong")).await;
-    assert!(
-        result.is_err(),
-        "connection with a wrong token must be rejected"
+        "connection with no Tailscale-User-Login header must be rejected"
     );
 
     pi.shutdown().await.ok();
@@ -110,7 +108,7 @@ async fn relays_get_state_round_trip() {
 
     // No `?session=` needed: exactly one session is registered, so `/ws`
     // defaults to it (see `SPEC.md` §6.4).
-    let (mut socket, _response) = connect_async(format!("ws://{addr}/ws?token={TOKEN}"))
+    let (mut socket, _response) = connect_async(authorized_request(&format!("ws://{addr}/ws")))
         .await
         .expect("authorized connection must succeed");
 
@@ -169,12 +167,7 @@ async fn rejects_ws_when_session_id_required_but_missing() {
         registry.register(id.to_string(), AgentLink::Headless(pi), meta);
     }
 
-    let state = AppState::new(
-        registry,
-        TOKEN.to_string(),
-        "unused".to_string(),
-        Vec::new(),
-    );
+    let state = AppState::new(registry, "unused".to_string());
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let app = server::router(state);
@@ -183,7 +176,7 @@ async fn rejects_ws_when_session_id_required_but_missing() {
     });
     tokio::time::sleep(Duration::from_millis(50)).await;
 
-    let result = connect_async(format!("ws://{addr}/ws?token={TOKEN}")).await;
+    let result = connect_async(authorized_request(&format!("ws://{addr}/ws"))).await;
     assert!(
         result.is_err(),
         "must reject an ambiguous /ws request when multiple sessions are registered"

@@ -70,14 +70,15 @@ appears in the other in real time.
 - Known limitation: `ctx.ui` dialogs raised by *other* project
   extensions (not `piper-agent` itself) are answered at the terminal
   only, not proxied to the phone, when connected via `/rc`.
-- Two independent secrets by design: a phone token (`PIPER_TOKEN`,
-  gates `/ws`, `/ws/control`, `/api/sessions`) and a separate,
-  auto-generated agent token (gates `/agent`, where `piper-agent`
-  registers sessions) — kept distinct because `tailscale serve` proxies
-  phone traffic through loopback, so peer-address alone can't
-  distinguish a genuine local `piper-agent` connection from a proxied
-  phone request. An optional `--allowed-tailscale-login` mode can
-  substitute Tailscale identity headers for the phone token.
+- No phone-side secret by design: `/ws`, `/ws/control`, and
+  `/api/sessions` authorize any request carrying the
+  `Tailscale-User-Login` identity header `tailscale serve` stamps onto
+  everything it proxies in — any device signed into the tailnet is
+  authorized, nothing to type or configure. A separate, auto-generated
+  agent token still gates `/agent` (where `piper-agent` registers
+  sessions), because that endpoint is reached directly over loopback by
+  a local process and never proxied through `tailscale serve`, so
+  there's no identity header to trust there.
 - No framework/build step for the frontend by design (plain HTML/CSS/
   JS, embedded into the compiled binary via `rust-embed`); the Rust
   backend uses `axum`/`tokio`.

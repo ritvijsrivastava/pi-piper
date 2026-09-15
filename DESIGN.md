@@ -132,11 +132,11 @@ Near-black ground with a single reserved accent; status color is a closed, meani
 Six deliberate steps, shared by both families (family is a separate axis from size) — every literal font-size in the codebase sets from one of these, no one-offs:
 
 - **2xs** (0.72rem): the tool-call step badge, the session-aggregate readout.
-- **xs** (0.78rem): hints, settings labels, session paths/subtitles, autocomplete descriptions, tool-body output.
+- **xs** (0.78rem): hints, session paths/subtitles, autocomplete descriptions, tool-body output.
 - **sm** (0.85rem): session preview lines, thinking blocks, tool-call summaries, toasts.
 - **base** (0.92rem, 500 weight): buttons, inputs, the search field, the chat pane header, autocomplete command names.
 - **md** (0.95rem, 600 for titles): session titles, chat bubbles, the **Title** role generally.
-- **lg** (1rem): the brand wordmark and every real text input (`message-input`, `token-input`, `session-search`) — 1rem is also the iOS auto-zoom threshold, so form fields never drop below it.
+- **lg** (1rem): the brand wordmark and every real text input (`message-input`, `session-search`) — 1rem is also the iOS auto-zoom threshold, so form fields never drop below it.
 
 ### Named Rules
 **The Identifier Rule.** Anything that is a stable, copy-pasteable identifier — a path, a session id, a command name, a timestamp, code — sets in JetBrains Mono. Anything conversational sets in Inter. Never mix the two to signal "technical" where the content isn't actually data.
@@ -189,7 +189,7 @@ Soft-technical, not soft-consumer: small, consistent corner radii on every inter
 - **States:** wrench icon while running → check (green) or x (red) icon on completion; arguments shown while running, hidden once complete; a chained call within the same agent turn (the second tool call onward) carries a small pill step badge (`#2`, `#3`, ...).
 
 ### Inputs
-- **Style:** Inset Slate background, Component Edge border, `0.6–0.9rem` radius depending on context (search/message inputs use the larger `lg` radius as a pill-leaning field; settings/token inputs use `md`).
+- **Style:** Inset Slate background, Component Edge border, `0.6–0.9rem` radius depending on context (search/message inputs use the larger `lg` radius as a pill-leaning field; other inputs use `md`).
 - **Focus:** border shifts to Signal Blue; no glow/shadow trick.
 
 ### Aggregate Readout (signature component)

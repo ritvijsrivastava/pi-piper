@@ -66,7 +66,7 @@ exact wire shapes.
 
 ```bash
 cargo build --release
-./target/release/piper --token "$(openssl rand -hex 32)"
+./target/release/piper
 ```
 
 This starts the Hub with no project pre-configured — it's a pure
@@ -91,30 +91,34 @@ what the systemd deployment uses so secrets never appear in `ps` output:
 
 | Flag | Env | Purpose |
 |---|---|---|
-| `--token` | `PIPER_TOKEN` | Phone-facing shared secret (`/ws`, `/ws/control`, `/api/sessions`). |
 | `--bind` | `PIPER_BIND` | Address to listen on. Defaults to `127.0.0.1:4390`. |
 | `--agent-token` | `PIPER_AGENT_TOKEN` | Pin the agent token instead of auto-generating one. Usually left unset. |
 | `--agent-token-path` | `PIPER_AGENT_TOKEN_PATH` | Where to persist a generated agent token. Defaults to `~/.pi/agent/piper/agent-token`. |
 | `--project-dir` | `PIPER_PROJECT_DIR` | Optional: also spawn a headless `pi --mode rpc` for one project with no terminal open (v1-compatible fallback, see `SPEC.md` §10). Most setups don't need this. |
 | `--session`, `--no-session`, `--pi-arg` | `PIPER_SESSION`, `PIPER_NO_SESSION` | Only relevant together with `--project-dir`. |
-| `--allowed-tailscale-login` (repeatable) | `PIPER_ALLOWED_TAILSCALE_LOGINS` (comma-separated) | Optional: lets `/ws`, `/ws/control`, `/api/sessions` accept the `Tailscale-User-Login` identity header `tailscale serve` stamps onto proxied requests, as an alternative to pasting `--token` into the phone. Off by default. See `SPEC.md` §7.1 for setup and an important caveat before enabling it. |
 
-**Auth note:** there are *two* independent tokens — the phone token
-above, and a separate agent token that gates `/agent` (where
-`piper-agent` extensions register sessions). They're deliberately
-different secrets: `tailscale serve` proxies phone connections through
-loopback, so a peer-address check alone can't tell a genuine local
-`piper-agent` connection apart from a proxied phone request. Both are
-defense-in-depth, not the primary security boundary — Piper is designed
-to be reachable only over a private Tailscale network in the first
-place.
+**Auth note:** `/ws`, `/ws/control`, and `/api/sessions` (the
+phone-facing routes) have no shared secret at all — any request that
+arrives carrying the `Tailscale-User-Login` identity header `tailscale
+serve` stamps onto everything it proxies in is authorized, regardless
+of which tailnet login it names. In other words: any device signed
+into your tailnet that can reach this Hub through `tailscale serve` can
+see and control your `pi` sessions. `/agent` (where `piper-agent`
+extensions register sessions) is different — it's reached directly over
+loopback by a local process, never proxied through `tailscale serve`,
+so there's no identity header to trust there; it keeps its own separate
+shared secret, the agent token. See `SPEC.md` §7 for the full model and
+why Piper cannot tell a proxied tailnet request apart from a local
+process by peer address alone — which is also why none of this is a
+substitute for restricting the tailnet itself (ACLs, who's on it) and
+never running `tailscale funnel` in front of Piper.
 
 ### Mobile client
 
-Open `https://<host>/` (or `http://` while testing over loopback) in a
-phone browser. On first load it asks for the (phone) access token and
-stores it in `localStorage`; you can also open a link like
-`https://<host>/?token=<token>` to set it automatically. "Add to Home
+Open `https://<host>/` (reachable once you've set up `tailscale serve`,
+see [Deployment](#deployment)) in a phone browser that's signed into the
+same tailnet. There is nothing to configure or type in — no token, no
+login screen; access is entirely gated by Tailscale. "Add to Home
 Screen" installs it as a standalone PWA.
 
 - **Session list**: every connected session, live-updated, with a
@@ -150,7 +154,7 @@ sudo install -m 755 target/release/piper /usr/local/bin/piper
 ```bash
 sudo install -d /etc/piper
 sudo install -m 600 deploy/piper.env.example /etc/piper/piper.env
-sudo $EDITOR /etc/piper/piper.env   # set PIPER_TOKEN at minimum
+sudo $EDITOR /etc/piper/piper.env   # defaults are fine for most setups
 ```
 
 ### 3. Install the systemd unit
@@ -198,14 +202,16 @@ public internet instead of just your tailnet.
    tailnet.
 2. Find this machine's tailnet hostname: `tailscale status` (looks like
    `your-machine.your-tailnet.ts.net`).
-3. Open `https://your-machine.your-tailnet.ts.net/?token=<PIPER_TOKEN>`
-   in your phone's browser once, to store the token.
+3. Open `https://your-machine.your-tailnet.ts.net/` in your phone's
+   browser. No token or login — being on the tailnet is the whole
+   credential.
 4. "Add to Home Screen" to install it as a standalone app icon.
 5. In any `pi` terminal session (on the Hub's machine), run `/rc`. It
    appears in the phone's session list within a second or two.
 
 Nothing here is reachable from the public internet — only devices signed
-into your tailnet can resolve or reach that hostname at all.
+into your tailnet can resolve or reach that hostname at all, and any
+device that can is authorized (see the auth note above).
 
 ## Development
 

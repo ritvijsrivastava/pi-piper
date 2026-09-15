@@ -51,22 +51,16 @@ pub struct Config {
     #[arg(long, env = "PIPER_BIND", default_value = "127.0.0.1:4390")]
     pub bind: SocketAddr,
 
-    /// Shared secret phone clients must present as `?token=` to open
-    /// `/ws`, `/ws/control`, or read `/api/sessions`. This is
-    /// defense-in-depth on top of Tailscale's network-level access
-    /// control, not the primary security boundary.
-    #[arg(long, env = "PIPER_TOKEN")]
-    pub token: String,
-
     /// Shared secret `piper-agent` extensions must present as `?token=`
-    /// to open `/agent`. Distinct from `--token` (the phone token) on
-    /// purpose: `tailscale serve` proxies phone connections through
-    /// loopback, so a peer-address check alone can't tell a phone
-    /// request apart from a local extension connection. If unset,
-    /// Piper generates one on first run and persists it to
-    /// `--agent-token-path`; `piper-agent` reads it directly from that
-    /// file, so it never needs to be typed or copied to the phone. See
-    /// `SPEC.md` §7.
+    /// to open `/agent`. `/ws`, `/ws/control`, and `/api/sessions` have
+    /// no analogous secret — they authorize any request carrying a
+    /// `Tailscale-User-Login` identity header instead, since
+    /// `tailscale serve` proxies those connections through loopback and
+    /// a peer-address check alone can't tell them apart from a local
+    /// `/agent` connection. If unset, Piper generates one on first run
+    /// and persists it to `--agent-token-path`; `piper-agent` reads it
+    /// directly from that file, so it never needs to be typed or copied
+    /// to the phone. See `SPEC.md` §7.
     #[arg(long, env = "PIPER_AGENT_TOKEN")]
     pub agent_token: Option<String>,
 
@@ -74,24 +68,6 @@ pub struct Config {
     /// `~/.pi/agent/piper/agent-token` (mode 0600 on Unix).
     #[arg(long, env = "PIPER_AGENT_TOKEN_PATH")]
     pub agent_token_path: Option<PathBuf>,
-
-    /// Optional allowlist of Tailscale logins (e.g. `alice@github`) that
-    /// may authenticate to the phone-facing routes (`/ws`, `/ws/control`,
-    /// `/api/sessions`) using the `Tailscale-User-Login` identity header
-    /// that `tailscale serve` stamps onto proxied requests, instead of
-    /// `--token`. Repeat the flag or comma-separate the env var. Empty
-    /// (the default) disables this path entirely and `--token` remains
-    /// required, as before. See `SPEC.md` §7 for the security tradeoff:
-    /// this trusts any local process that can reach Piper's loopback
-    /// port to not forge the header, since Piper cannot distinguish
-    /// `tailscale serve`'s own proxied connections from other local
-    /// connections by peer address alone.
-    #[arg(
-        long = "allowed-tailscale-login",
-        env = "PIPER_ALLOWED_TAILSCALE_LOGINS",
-        value_delimiter = ','
-    )]
-    pub allowed_tailscale_logins: Vec<String>,
 }
 
 impl Config {

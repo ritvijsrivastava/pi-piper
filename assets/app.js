@@ -17,7 +17,6 @@
 // `isDesktop()` below is the one place that decides which layout is live.
 
 (() => {
-  const TOKEN_KEY = "piper.token";
   const LAST_SESSION_KEY = "piper.lastSession";
   const ICON_SPRITE = "/icons/sprite.svg";
   const markdownRenderer = window.PiperMarkdown;
@@ -28,10 +27,6 @@
   const backButton = document.getElementById("back-button");
   const statusDot = document.getElementById("status-dot");
   const statusText = document.getElementById("status-text");
-  const settingsPanel = document.getElementById("settings");
-  const settingsToggle = document.getElementById("settings-toggle");
-  const tokenInput = document.getElementById("token-input");
-  const settingsSave = document.getElementById("settings-save");
   const toastContainer = document.getElementById("toast-container");
 
   const sessionListView = document.getElementById("session-list-view");
@@ -76,26 +71,7 @@
     return coarsePointerQuery.matches;
   }
 
-  // ---- Token handling ----------------------------------------------------
-
-  // A token can be dropped straight into the page URL (?token=...) so the
-  // page is bookmarkable/shareable on the phone; it's persisted to
-  // localStorage immediately and stripped from the visible URL.
-  function loadTokenFromQueryString() {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    if (token) {
-      localStorage.setItem(TOKEN_KEY, token);
-      params.delete("token");
-      const rest = params.toString();
-      const newUrl = window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash;
-      window.history.replaceState({}, "", newUrl);
-    }
-  }
-
-  function getToken() {
-    return localStorage.getItem(TOKEN_KEY) || "";
-  }
+  // ---- URLs ----------------------------------------------------------------
 
   function wsUrl(path) {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -187,18 +163,6 @@
   desktopQuery.addEventListener("change", renderRoute);
   backButton.addEventListener("click", navigateToSessions);
 
-  // ---- Settings -------------------------------------------------------------
-
-  settingsToggle.addEventListener("click", () => {
-    settingsPanel.hidden = !settingsPanel.hidden;
-  });
-
-  settingsSave.addEventListener("click", () => {
-    localStorage.setItem(TOKEN_KEY, tokenInput.value.trim());
-    settingsPanel.hidden = true;
-    renderRoute();
-  });
-
   // ---- Session list screen (SPEC.md §9.1) -----------------------------------
 
   const Sessions = (() => {
@@ -216,13 +180,13 @@
      * screen. */
     let activeSessionId = null;
 
-    // No local token is required up front: a request may also be
-    // authorized by the `Tailscale-User-Login` identity header that
-    // `tailscale serve` stamps on automatically (see SPEC.md §7.1),
-    // which this page cannot see or set itself — it's added at the
-    // network layer regardless of what's in localStorage. So always
-    // attempt the request first, and only fall back to prompting for a
-    // token if the Hub actually says 401.
+    // Authorization travels entirely at the network layer now: the Hub
+    // trusts the `Tailscale-User-Login` identity header that `tailscale
+    // serve` stamps onto every proxied request (see SPEC.md §7), which
+    // this page cannot see or influence itself — there is nothing to
+    // configure here. A 401 means the request didn't arrive through
+    // Tailscale at all (e.g. the Hub is being hit directly, or
+    // `tailscale serve` isn't set up), not a bad credential to fix.
     //
     // Idempotent: at desktop widths the rail's control channel stays
     // open across chat navigation, so this may be called on every
@@ -233,28 +197,20 @@
       if (authorized) {
         connectControlChannel();
       } else {
-        setStatus("disconnected", "Unauthorized \u2013 set a token");
-        settingsToggle.hidden = false;
-        settingsPanel.hidden = false;
+        setStatus("disconnected", "Unauthorized \u2013 open this page through Tailscale");
         render();
       }
     }
 
-    /** Returns true if the request was authorized (token match or a
-     * Tailscale identity header the Hub accepted), false on a definite
-     * 401. Network/other errors are treated as transient and don't
-     * block trying the control WebSocket too. */
+    /** Returns true if the request was authorized (arrived with a valid
+     * Tailscale identity header), false on a definite 401. Network/other
+     * errors are treated as transient and don't block trying the control
+     * WebSocket too. */
     async function fetchSnapshot() {
       try {
-        const response = await fetch(apiUrl(`/api/sessions?token=${encodeURIComponent(getToken())}`));
+        const response = await fetch(apiUrl("/api/sessions"));
         if (response.status === 401) return false;
         if (!response.ok) return true;
-        // Authorized with no locally-stored token at all — the only way
-        // that's possible is the Tailscale identity header (SPEC.md
-        // §7.1). There is nothing to configure in that case, so hide the
-        // settings gear entirely instead of leaving an "Access token"
-        // control dangling that would suggest one is needed.
-        if (!getToken()) settingsToggle.hidden = true;
         const list = await response.json();
         sessions.clear();
         for (const session of list) sessions.set(session.sessionId, session);
@@ -269,8 +225,7 @@
 
     function connectControlChannel() {
       setStatus("connecting", "Connecting\u2026");
-      const token = encodeURIComponent(getToken());
-      controlSocket = new WebSocket(wsUrl(`/ws/control?token=${token}`));
+      controlSocket = new WebSocket(wsUrl("/ws/control"));
 
       controlSocket.addEventListener("open", () => {
         reconnectDelayMs = 1000;
@@ -547,16 +502,15 @@
     }
 
     function connect() {
-      // Same reasoning as Sessions.start(): don't require a local token,
-      // the Tailscale identity header (if any) travels with the request
-      // regardless. The session list screen already gates entry on a
+      // Same reasoning as Sessions.start(): authorization travels at the
+      // network layer (the Tailscale identity header), not anything this
+      // page sends. The session list screen already gates entry on a
       // successful /api/sessions call, so by the time this runs we're
       // reasonably confident auth works.
       if (!currentSessionId) return;
       setStatus("connecting", "Connecting\u2026");
-      const token = encodeURIComponent(getToken());
       const session = encodeURIComponent(currentSessionId);
-      socket = new WebSocket(wsUrl(`/ws?token=${token}&session=${session}`));
+      socket = new WebSocket(wsUrl(`/ws?session=${session}`));
 
       socket.addEventListener("open", () => {
         reconnectDelayMs = 1000;
@@ -1086,7 +1040,27 @@
       if (ev.key === "Escape") hideAutocomplete();
     });
     document.addEventListener("keydown", (ev) => {
-      if (ev.key === "Escape" && !attachmentSheet.hidden) closeAttachmentSheet();
+      if (attachmentSheet.hidden) return;
+      if (ev.key === "Escape") {
+        closeAttachmentSheet();
+        return;
+      }
+      // A modal sheet keeps Tab (and Shift+Tab) cycling inside itself.
+      // The backdrop button is a pointer target, not a keyboard stop, so
+      // only the panel's controls participate in the cycle.
+      if (ev.key !== "Tab") return;
+      const focusable = attachmentSheet.querySelectorAll("#attachment-sheet-panel button");
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (ev.shiftKey && (active === first || !attachmentSheet.contains(active))) {
+        ev.preventDefault();
+        last.focus();
+      } else if (!ev.shiftKey && (active === last || !attachmentSheet.contains(active))) {
+        ev.preventDefault();
+        first.focus();
+      }
     });
 
     window.addEventListener("resize", autoResizeInput);
@@ -1097,8 +1071,6 @@
 
   // ---- Startup ----------------------------------------------------------------
 
-  loadTokenFromQueryString();
-  tokenInput.value = getToken();
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").then((registration) => {
       // Proactively check for a newer sw.js on every load rather than
@@ -1114,9 +1086,8 @@
   }
   renderRoute();
   // A deep link straight into the chat view (#/session/<id>) never runs
-  // Sessions.start(), which is otherwise what decides whether the
-  // settings gear should be hidden (authenticated via the Tailscale
-  // identity header, see fetchSnapshot above) — so check once here too.
+  // Sessions.start(), which is otherwise what populates the session
+  // list in the background — so warm it once here too.
   if (currentRoute().view === "chat") {
     Sessions.fetchSnapshot();
   }

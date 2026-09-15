@@ -76,12 +76,7 @@ async fn main() -> Result<()> {
         None
     };
 
-    let state = AppState::new(
-        registry,
-        config.token.clone(),
-        agent_token,
-        config.allowed_tailscale_logins.clone(),
-    );
+    let state = AppState::new(registry, agent_token);
 
     let listener = TcpListener::bind(config.bind).await?;
     tracing::info!(addr = %config.bind, "piper listening");

@@ -1,9 +1,10 @@
 //! `/agent`: `piper-agent` extensions connect here to register a live
 //! interactive `pi` session for remote control. See `SPEC.md` §6.1.
 //!
-//! This endpoint is agent-token gated (see `SPEC.md` §7) — a different,
-//! never-phone-visible secret from the phone token that gates `/ws`.
-//! Everything after the upgrade is the tiny registration envelope
+//! This endpoint is agent-token gated (see `SPEC.md` §7) — a shared
+//! secret never sent to the phone, unlike `/ws`, `/ws/control`, and
+//! `/api/sessions`, which authorize any request arriving over
+//! Tailscale instead. Everything after the upgrade is the tiny registration envelope
 //! defined in `SPEC.md` §6.1; the pi RPC JSON it carries is passed
 //! through unwrapped into the session's own broadcast channel via
 //! `SessionRegistry::publish`.

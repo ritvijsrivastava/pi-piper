@@ -52,16 +52,26 @@ setup — the defaults match the Hub's own defaults exactly.
 pi's entire extension runtime for the replacement session (this is how
 pi itself works, not specific to this extension). Rather than just
 disconnecting, this extension reconnects automatically under the new
-session using `withSession` (see `ctx.newSession()` / `ctx.fork()` /
-`ctx.switchSession()` in pi's extension API) — so a phone that was
-watching a session before `/new` keeps watching (now pointed at a
-"session disconnected" -> "new session connected" transition) without
-you having to type `/rc` again. A phone prompt containing exactly `/new`
-is intercepted by the extension and follows the same lifecycle: close
-the old `/rc` registration, create the replacement session, and register
-`/rc` again without exiting the pi process. A plain rename (`/name`) is even
-lighter-weight: it patches the existing registry entry in place and
-never disconnects at all.
+session, so a phone that was watching a session before the switch keeps
+watching (now pointed at a "session disconnected" -> "new session
+connected" transition) without you having to type `/rc` again. This
+works both ways:
+
+- **Remote switch** (phone sends `new_session` / `fork` /
+  `switch_session`, or a prompt of exactly `/new`): the extension
+  intercepts the command, creates the replacement session itself, and
+  re-runs `/rc` through the fresh replacement context.
+- **Local switch** (you type `/new`, `/resume`, or `/fork` in the
+  terminal, or `/reload`): pi's built-in command tears the extension
+  runtime down with no chance to run code in the replacement, so the
+  outgoing session instead records a small handoff entry on disk
+  (`~/.pi/agent/piper/rc-handoff.json`) and the replacement instance's
+  `session_start` hook picks it up and reconnects. The entry is
+  only removed by `/rc stop` or quitting pi, so RC also follows a
+  session across a pi restart + `/resume` of the same session file.
+
+A plain rename (`/name`) is even lighter-weight: it patches the existing
+registry entry in place and never disconnects at all.
 
 ## Known gaps
 

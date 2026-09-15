@@ -1,6 +1,6 @@
 <!--
   Icon sprite. Icons from Lucide (https://lucide.dev), ISC License — see
-  assets/icons/src/LICENSE-lucide.txt. Stroke-based, 24x24, 2px stroke,
+  assets/icons/LICENSE-lucide.txt. Stroke-based, 24x24, 2px stroke,
   round caps/joins throughout so every icon in the product shares one
   consistent weight. Referenced via <use href="/icons/sprite.svg#icon-*">.
 -->

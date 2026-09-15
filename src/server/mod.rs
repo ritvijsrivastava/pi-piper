@@ -16,8 +16,9 @@ use crate::state::AppState;
 /// Builds the full application router:
 /// - `/agent`: `piper-agent` extensions register live sessions here
 ///   (agent-token gated, see `SPEC.md` §6.1/§7).
-/// - `/ws`: phone bridge to one session's RPC stream (phone-token
-///   gated, unchanged from Piper v1 other than the `?session=` param).
+/// - `/ws`: phone bridge to one session's RPC stream (Tailscale-identity
+///   gated, see `SPEC.md` §7; unchanged from Piper v1 other than the
+///   `?session=` param).
 /// - `/ws/control`: phone push channel for the session list screen.
 /// - `/api/sessions`: HTTP snapshot of the session list.
 /// - everything else: the embedded PWA.

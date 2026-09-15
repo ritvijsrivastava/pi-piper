@@ -9,7 +9,8 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { createCommandHandler } from "./command-dispatch.ts";
-import { rememberCommandCtx } from "./context-cache.ts";
+import { rememberCommandCtx, rememberCtx } from "./context-cache.ts";
+import { dropHandoff, hasHandoff, markHandoff } from "./handoff.ts";
 import { registerEventForwarding } from "./event-bridge.ts";
 import { HubClient } from "./hub-client.ts";
 
@@ -18,8 +19,8 @@ const RC_STATUS_ID = "piper-rc";
 export default function (pi: ExtensionAPI) {
   let client: HubClient | undefined;
   let activeStatusContext: ExtensionContext | undefined;
+  let activeSessionFile: string | undefined;
   let clientGeneration = 0;
-  let replacingSession = false;
 
   const handleCommand = createCommandHandler(
     pi,
@@ -33,14 +34,32 @@ export default function (pi: ExtensionAPI) {
       // A remote `/new` must follow the same lifecycle as typing `/rc stop`,
       // `/new`, then `/rc`: close the old registration before pi replaces
       // the session, and keep the replacement's shutdown hook from closing
-      // the freshly reconnected client.
-      replacingSession = true;
+      // the freshly reconnected client. The handoff entry is dropped here so
+      // the replacement's session_start hook (which serves locally-typed
+      // `/new` etc.) does not reconnect a second time on top of the
+      // sendUserMessage("/rc") reconnect above.
+      if (activeSessionFile) dropHandoff(activeSessionFile);
       stop();
     },
   );
 
-  function start(ctx: ExtensionCommandContext): void {
-    rememberCommandCtx(ctx);
+  function start(ctx: ExtensionContext): void {
+    // Only seed the command-context cache when this really is a command
+    // context: the session_start auto-reconnect path only has a plain
+    // ExtensionContext, and caching that would leave remote
+    // new_session/fork/switch_session failing on missing methods.
+    if (typeof (ctx as ExtensionCommandContext).newSession === "function") {
+      rememberCommandCtx(ctx as ExtensionCommandContext);
+    } else {
+      rememberCtx(ctx);
+    }
+    const sessionFile = ctx.sessionManager.getSessionFile();
+    if (sessionFile) {
+      activeSessionFile = sessionFile;
+      // Survives the runtime teardown of /new, /resume, /fork and /reload so
+      // the replacement instance's session_start hook can reconnect.
+      markHandoff(sessionFile);
+    }
     activeStatusContext = ctx;
     ctx.ui.setStatus(RC_STATUS_ID, ctx.ui.theme.fg("warning", "RC: connecting"));
     const generation = ++clientGeneration;
@@ -84,32 +103,58 @@ export default function (pi: ExtensionAPI) {
     client.connect();
   }
 
-  function stop(ctx?: ExtensionContext): void {
+  function stop(ctx?: ExtensionContext, options?: { clearHandoff?: boolean }): void {
     clientGeneration += 1;
     const statusContext = ctx ?? activeStatusContext;
     statusContext?.ui.setStatus(RC_STATUS_ID, undefined);
     activeStatusContext = undefined;
     client?.close();
     client = undefined;
+    // Only an explicit /rc stop (or quitting pi) ends the handoff; on
+    // session replacement the entry must survive — it is how the
+    // replacement session's session_start hook learns to reconnect.
+    if (options?.clearHandoff && activeSessionFile) dropHandoff(activeSessionFile);
+    activeSessionFile = undefined;
   }
+
+  // A locally-typed `/new`, `/resume` or `/fork` (unlike the phone-issued
+  // commands, which go through command-dispatch's `withSession` reconnect)
+  // tears down and recreates the whole extension runtime, so the reconnect
+  // callback never runs for it. `/reload` rebuilds the runtime in place.
+  // In all those cases the replacement instance learns it should reconnect
+  // from the handoff file written by start() in the outgoing session.
+  pi.on("session_start", (event, ctx) => {
+    const previous =
+      event.reason === "reload" ? ctx.sessionManager.getSessionFile() : event.previousSessionFile;
+    if (!previous || !hasHandoff(previous)) return;
+    dropHandoff(previous);
+    try {
+      start(ctx);
+      ctx.ui.notify("piper: RC followed the session change — reconnecting…", "info");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      ctx.ui.notify(`piper: failed to reconnect after session change: ${message}`, "error");
+    }
+  });
 
   registerEventForwarding(pi, (event) => client?.sendEvent(event));
 
   // Lightweight rename (e.g. `/name`); full session replacement (`/new`,
-  // `/resume`, `/fork`) is handled via `session_shutdown` below plus the
-  // `reconnect` callback passed to createCommandHandler above, since
-  // those tear down and recreate the whole extension runtime.
+  // `/resume`, `/fork`) reconnects via the `reconnect` callback passed to
+  // createCommandHandler (remote commands) or the `session_start` hook
+  // above (locally-typed commands, `/reload`), since those tear down and
+  // recreate the whole extension runtime.
   pi.on("session_info_changed", () => {
     client?.updateInfo({ sessionName: pi.getSessionName() });
   });
 
-  pi.on("session_shutdown", (_event, ctx) => {
-    if (replacingSession) {
-      replacingSession = false;
-      stop(ctx);
-      return;
-    }
-    stop(ctx);
+  pi.on("session_shutdown", (event, ctx) => {
+    // Leaving pi entirely: end the handoff so a later /resume of this
+    // session doesn't silently reconnect RC. For "new"/"resume"/"fork" the
+    // entry must survive — the replacement session's session_start hook
+    // consumes it to reconnect.
+    if (event.reason === "quit") stop(ctx, { clearHandoff: true });
+    else stop(ctx);
   });
 
   pi.registerCommand("rc", {
@@ -117,7 +162,7 @@ export default function (pi: ExtensionAPI) {
     handler: async (args, ctx) => {
       const sub = args.trim();
       if (sub === "stop") {
-        stop(ctx);
+        stop(ctx, { clearHandoff: true });
         ctx.ui.notify("piper: disconnected", "info");
         return;
       }

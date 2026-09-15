@@ -3,32 +3,27 @@
 //! ever sends here is an optional ping/close.
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{Query, State};
+use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use futures_util::{SinkExt, StreamExt};
-use serde::Deserialize;
 use serde_json::json;
 use tokio::sync::broadcast::error::RecvError;
 
 use super::auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
-pub struct ControlAuthQuery {
-    token: Option<String>,
-}
-
 pub async fn handler(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
-    Query(query): Query<ControlAuthQuery>,
     headers: HeaderMap,
 ) -> Response {
-    let authorized = auth::is_authorized(&state.phone_token, query.token.as_deref())
-        || auth::is_authorized_tailscale_identity(&state.allowed_tailscale_logins, &headers);
-    if !authorized {
-        return (StatusCode::UNAUTHORIZED, "missing or invalid token").into_response();
+    if !auth::is_authorized_tailscale(&headers) {
+        return (
+            StatusCode::UNAUTHORIZED,
+            "not authorized: connect over Tailscale",
+        )
+            .into_response();
     }
     ws.on_upgrade(move |socket| handle(socket, state))
 }

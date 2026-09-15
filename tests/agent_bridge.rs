@@ -13,27 +13,34 @@ use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use tokio::net::TcpListener;
 use tokio_tungstenite::connect_async;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::Message;
 
 use piper::registry::SessionRegistry;
 use piper::server;
 use piper::state::AppState;
 
-const PHONE_TOKEN: &str = "phone-token";
 const AGENT_TOKEN: &str = "agent-token";
 
-async fn spawn_hub() -> SocketAddr {
-    spawn_hub_with_allowed_logins(Vec::new()).await
+/// Tailnet login stamped on requests that pretend to have been proxied
+/// in by `tailscale serve` (see `SPEC.md` §7), which is now the only
+/// thing that authorizes `/ws` and `/ws/control`.
+const TAILSCALE_LOGIN: &str = "test-user@github";
+
+/// Builds a WebSocket upgrade request carrying a `Tailscale-User-Login`
+/// header, standing in for what `tailscale serve` would stamp on a real
+/// proxied request.
+fn authorized_request(url: &str) -> tokio_tungstenite::tungstenite::handshake::client::Request {
+    let mut request = url.into_client_request().expect("valid ws url");
+    request
+        .headers_mut()
+        .insert("Tailscale-User-Login", TAILSCALE_LOGIN.parse().unwrap());
+    request
 }
 
-async fn spawn_hub_with_allowed_logins(allowed_tailscale_logins: Vec<String>) -> SocketAddr {
+async fn spawn_hub() -> SocketAddr {
     let registry = Arc::new(SessionRegistry::new());
-    let state = AppState::new(
-        registry,
-        PHONE_TOKEN.to_string(),
-        AGENT_TOKEN.to_string(),
-        allowed_tailscale_logins,
-    );
+    let state = AppState::new(registry, AGENT_TOKEN.to_string());
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -106,7 +113,7 @@ async fn register_appears_in_sessions_api_and_control_snapshot() {
     assert_eq!(client["connected"], true);
 
     // Control channel's initial snapshot sees it too.
-    let (mut control, _) = connect_async(format!("ws://{addr}/ws/control?token={PHONE_TOKEN}"))
+    let (mut control, _) = connect_async(authorized_request(&format!("ws://{addr}/ws/control")))
         .await
         .expect("control connects");
     let snapshot = recv_json(&mut control).await;
@@ -132,10 +139,11 @@ async fn command_from_phone_is_relayed_to_agent_and_response_back_to_phone() {
         .unwrap();
     let _ack = recv_json(&mut agent).await;
 
-    let (mut phone, _) =
-        connect_async(format!("ws://{addr}/ws?token={PHONE_TOKEN}&session=sess-2"))
-            .await
-            .expect("phone connects");
+    let (mut phone, _) = connect_async(authorized_request(&format!(
+        "ws://{addr}/ws?session=sess-2"
+    )))
+    .await
+    .expect("phone connects");
 
     phone
         .send(Message::Text(
@@ -219,7 +227,10 @@ async fn duplicate_registration_closes_the_previous_connection() {
     assert!(closed, "the superseded connection should have been closed");
 
     // The surviving registration reflects the second connection's meta.
-    let sessions: Value = reqwest::get(format!("http://{addr}/api/sessions?token={PHONE_TOKEN}"))
+    let sessions: Value = reqwest::Client::new()
+        .get(format!("http://{addr}/api/sessions"))
+        .header("Tailscale-User-Login", TAILSCALE_LOGIN)
+        .send()
         .await
         .expect("request /api/sessions")
         .json()
@@ -252,7 +263,7 @@ async fn disconnecting_agent_removes_session_and_notifies_control_channel() {
         .unwrap();
     let _ack = recv_json(&mut agent).await;
 
-    let (mut control, _) = connect_async(format!("ws://{addr}/ws/control?token={PHONE_TOKEN}"))
+    let (mut control, _) = connect_async(authorized_request(&format!("ws://{addr}/ws/control")))
         .await
         .expect("control connects");
     let _snapshot = recv_json(&mut control).await;
@@ -266,12 +277,12 @@ async fn disconnecting_agent_removes_session_and_notifies_control_channel() {
 }
 
 #[tokio::test]
-async fn sessions_api_accepts_allowed_tailscale_identity_header_without_token() {
-    let addr = spawn_hub_with_allowed_logins(vec!["alice@github".to_string()]).await;
+async fn sessions_api_accepts_any_tailscale_identity_header() {
+    let addr = spawn_hub().await;
 
     let response = reqwest::Client::new()
         .get(format!("http://{addr}/api/sessions"))
-        .header("Tailscale-User-Login", "alice@github")
+        .header("Tailscale-User-Login", "anybody@example.com")
         .send()
         .await
         .expect("request /api/sessions");
@@ -279,12 +290,11 @@ async fn sessions_api_accepts_allowed_tailscale_identity_header_without_token() 
 }
 
 #[tokio::test]
-async fn sessions_api_rejects_tailscale_identity_header_when_login_not_allowed() {
-    let addr = spawn_hub_with_allowed_logins(vec!["alice@github".to_string()]).await;
+async fn sessions_api_rejects_missing_tailscale_identity_header() {
+    let addr = spawn_hub().await;
 
     let response = reqwest::Client::new()
         .get(format!("http://{addr}/api/sessions"))
-        .header("Tailscale-User-Login", "mallory@github")
         .send()
         .await
         .expect("request /api/sessions");
@@ -293,25 +303,12 @@ async fn sessions_api_rejects_tailscale_identity_header_when_login_not_allowed()
 
 #[tokio::test]
 async fn sessions_api_rejects_tailscale_identity_header_on_funnel_requests() {
-    let addr = spawn_hub_with_allowed_logins(vec!["alice@github".to_string()]).await;
-
-    let response = reqwest::Client::new()
-        .get(format!("http://{addr}/api/sessions"))
-        .header("Tailscale-User-Login", "alice@github")
-        .header("Tailscale-Funnel-Request", "?1")
-        .send()
-        .await
-        .expect("request /api/sessions");
-    assert_eq!(response.status(), reqwest::StatusCode::UNAUTHORIZED);
-}
-
-#[tokio::test]
-async fn sessions_api_ignores_tailscale_identity_header_when_allowlist_empty() {
     let addr = spawn_hub().await;
 
     let response = reqwest::Client::new()
         .get(format!("http://{addr}/api/sessions"))
-        .header("Tailscale-User-Login", "alice@github")
+        .header("Tailscale-User-Login", "anybody@example.com")
+        .header("Tailscale-Funnel-Request", "?1")
         .send()
         .await
         .expect("request /api/sessions");
@@ -321,7 +318,10 @@ async fn sessions_api_ignores_tailscale_identity_header_when_allowlist_empty() {
 /// Minimal HTTP GET without pulling in `reqwest` as a dev-dependency:
 /// finds `sess-1`'s entry from `/api/sessions`.
 async fn fetch_session(addr: &SocketAddr, session_id: &str) -> Value {
-    let sessions: Value = reqwest::get(format!("http://{addr}/api/sessions?token={PHONE_TOKEN}"))
+    let sessions: Value = reqwest::Client::new()
+        .get(format!("http://{addr}/api/sessions"))
+        .header("Tailscale-User-Login", TAILSCALE_LOGIN)
+        .send()
         .await
         .expect("request /api/sessions")
         .json()

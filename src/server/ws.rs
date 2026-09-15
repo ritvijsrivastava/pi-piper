@@ -24,24 +24,25 @@ use crate::state::AppState;
 /// Query parameters accepted on the WebSocket upgrade request.
 #[derive(Deserialize)]
 pub struct WsQuery {
-    token: Option<String>,
     /// Which registered session to bridge to. May be omitted only when
     /// exactly one session is registered (see `SPEC.md` §6.4).
     session: Option<String>,
 }
 
-/// Validates the shared-secret token, resolves the target session, then
-/// upgrades the connection and starts bridging it.
+/// Checks the caller arrived over Tailscale, resolves the target
+/// session, then upgrades the connection and starts bridging it.
 pub async fn handler(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
     Query(query): Query<WsQuery>,
     headers: HeaderMap,
 ) -> Response {
-    let authorized = auth::is_authorized(&state.phone_token, query.token.as_deref())
-        || auth::is_authorized_tailscale_identity(&state.allowed_tailscale_logins, &headers);
-    if !authorized {
-        return (StatusCode::UNAUTHORIZED, "missing or invalid token").into_response();
+    if !auth::is_authorized_tailscale(&headers) {
+        return (
+            StatusCode::UNAUTHORIZED,
+            "not authorized: connect over Tailscale",
+        )
+            .into_response();
     }
 
     let handle = match &query.session {

@@ -14,7 +14,7 @@ Type=simple
 User=YOUR_USER
 
 # See deploy/piper.env.example. Keep this file's permissions restrictive
-# (chmod 600) since it holds the access token.
+# (chmod 600) in case PIPER_AGENT_TOKEN is pinned here.
 EnvironmentFile=/etc/piper/piper.env
 
 ExecStart=/usr/local/bin/piper
